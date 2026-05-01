@@ -1,0 +1,411 @@
+{% extends "base.html" %}
+{% block title %}Browse — {{ playlist_name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .browse-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+    .browse-title { font-size: 1.3em; font-weight: 700; margin-bottom: 4px; }
+    .browse-meta  { color: var(--muted); font-size: .85em; }
+
+    .track-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: background .15s;
+        border-bottom: 1px solid var(--border);
+    }
+    .track-row:last-child { border-bottom: none; }
+    .track-row:hover, .track-row.playing { background: rgba(29,185,84,.08); }
+    .track-row.playing { border-left: 3px solid var(--green); padding-left: 9px; }
+
+    .track-num {
+        width: 24px; text-align: center;
+        color: var(--muted); font-size: .8em; flex-shrink: 0;
+    }
+    .track-row.playing .track-num { color: var(--green); }
+
+    .track-thumb {
+        width: 44px; height: 44px;
+        border-radius: 6px; object-fit: cover;
+        flex-shrink: 0; background: var(--surface);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.3em;
+    }
+
+    .track-info { flex: 1; min-width: 0; }
+    .track-name {
+        font-size: .9em; font-weight: 600;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .track-artist {
+        font-size: .78em; color: var(--muted); margin-top: 2px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .track-row.playing .track-name { color: var(--green); }
+
+    .track-btns { display: flex; gap: 6px; flex-shrink: 0; }
+    .btn-prev {
+        font-size: .72em; padding: 5px 9px;
+        border-radius: 20px; border: 1px solid var(--border);
+        background: transparent; color: var(--muted); cursor: pointer;
+        transition: all .15s; white-space: nowrap;
+    }
+    .btn-prev:hover { border-color: var(--green); color: var(--green); background: rgba(29,185,84,.08); }
+    .btn-full {
+        font-size: .72em; padding: 5px 9px;
+        border-radius: 20px; border: none;
+        background: var(--green); color: #000; font-weight: 700;
+        cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .btn-full:hover { background: var(--green2); }
+
+    /* ── Sticky player ── */
+    #player {
+        position: fixed; bottom: 0; left: 0; right: 0;
+        background: rgba(18,18,18,.97);
+        backdrop-filter: blur(20px);
+        border-top: 1px solid var(--border);
+        padding: 10px 20px 14px;
+        z-index: 1000;
+        transform: translateY(100%);
+        transition: transform .3s cubic-bezier(.4,0,.2,1);
+    }
+    #player.visible { transform: translateY(0); }
+
+    .player-inner {
+        max-width: 780px; margin: 0 auto;
+        display: flex; align-items: center; gap: 16px;
+    }
+    #player-art {
+        width: 46px; height: 46px; border-radius: 6px;
+        object-fit: cover; background: var(--surface);
+        flex-shrink: 0; display: flex; align-items: center;
+        justify-content: center; font-size: 1.4em;
+    }
+    .player-meta { min-width: 0; flex: 1; }
+    #player-track {
+        font-size: .9em; font-weight: 600;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #player-artist {
+        font-size: .75em; color: var(--muted); margin-top: 1px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #player-mode-badge {
+        font-size: .65em; font-weight: 700; padding: 2px 6px;
+        border-radius: 4px; background: var(--surface);
+        color: var(--muted); margin-left: 6px; vertical-align: middle;
+    }
+
+    .player-controls { display: flex; align-items: center; gap: 12px; flex: 2; }
+    #play-btn {
+        width: 40px; height: 40px; border-radius: 50%;
+        background: var(--green); border: none; cursor: pointer;
+        font-size: 1.1em; display: flex; align-items: center;
+        justify-content: center; transition: transform .1s, background .1s;
+        flex-shrink: 0; color: #000;
+    }
+    #play-btn:hover { background: var(--green2); transform: scale(1.05); }
+
+    .progress-wrap { flex: 1; }
+    #progress-bar {
+        height: 4px; background: var(--border); border-radius: 2px;
+        cursor: pointer; margin-bottom: 4px; position: relative;
+    }
+    #progress-fill {
+        height: 100%; border-radius: 2px;
+        background: var(--green); width: 0%;
+        transition: width .3s linear; pointer-events: none;
+    }
+    .time-row {
+        display: flex; justify-content: space-between;
+        font-size: .7em; color: var(--muted);
+    }
+    #player-loading {
+        font-size: .75em; color: var(--muted);
+        display: none; align-items: center; gap: 6px;
+    }
+    .spin { animation: spin .8s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    body.player-open { padding-bottom: 88px; }
+
+    .dl-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+    <div class="card">
+        <div class="browse-header">
+            <div>
+                <div class="browse-title">{{ playlist_name }}</div>
+                <div class="browse-meta">{{ tracks|length }} tracks · click a row to play</div>
+            </div>
+            <div class="dl-actions">
+                <a href="{{ url_for('index') }}" class="btn" style="padding:9px 16px;font-size:.85em">← Back</a>
+                <form action="/start_download" method="POST" style="display:inline">
+                    <input type="hidden" name="playlist_url" value="{{ playlist_url }}">
+                    <input type="hidden" name="audio_quality" value="{{ settings.audio_quality }}">
+                    <input type="hidden" name="max_songs" value="{{ settings.max_songs }}">
+                    <input type="hidden" name="chunk_size" value="{{ settings.chunk_size }}">
+                    <button type="submit" class="btn btn-green" style="padding:9px 16px;font-size:.85em">
+                        🚀 Download All
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div id="track-list">
+            {% for t in tracks %}
+            <div class="track-row"
+                 data-idx="{{ loop.index0 }}"
+                 data-name="{{ t.name|e }}"
+                 data-artist="{{ t.artist|e }}"
+                 data-preview="{{ t.preview_url|e }}"
+                 data-spotify="{{ t.spotify_url|e }}"
+                 data-cover="{{ t.cover_url|e }}"
+                 onclick="playTrack(this)">
+
+                <div class="track-num">
+                    <span class="num-label">{{ t.track_number }}</span>
+                    <span class="play-icon" style="display:none">▶</span>
+                </div>
+
+                {% if t.cover_url %}
+                <img class="track-thumb"
+                     src="{{ t.cover_url }}"
+                     data-spotify-url="{{ t.spotify_url|e }}"
+                     alt="" loading="lazy">
+                {% else %}
+                <div class="track-thumb" data-spotify-url="{{ t.spotify_url|e }}">🎵</div>
+                {% endif %}
+
+                <div class="track-info">
+                    <div class="track-name">{{ t.name }}</div>
+                    <div class="track-artist">{{ t.artist }}</div>
+                </div>
+
+                <div class="track-btns" onclick="event.stopPropagation()">
+                    {% if t.preview_url %}
+                    <button class="btn-prev"
+                            onclick="playPreview(this.closest('.track-row'))"
+                            title="30-second Spotify preview">30s</button>
+                    {% endif %}
+                    <button class="btn-full"
+                            onclick="playFull(this.closest('.track-row'))"
+                            title="Stream full song">▶ Full</button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Sticky player -->
+<div id="player">
+    <div class="player-inner">
+        <div id="player-art">🎵</div>
+        <div class="player-meta">
+            <div>
+                <span id="player-track">—</span>
+                <span id="player-mode-badge">PREVIEW</span>
+            </div>
+            <div id="player-artist">—</div>
+            <div id="player-loading"><span class="spin">⟳</span> Finding on YouTube…</div>
+        </div>
+        <div class="player-controls">
+            <button id="play-btn" onclick="togglePlayPause()">⏸</button>
+            <div class="progress-wrap">
+                <div id="progress-bar" onclick="seek(event)">
+                    <div id="progress-fill"></div>
+                </div>
+                <div class="time-row">
+                    <span id="cur-time">0:00</span>
+                    <span id="tot-time">--:--</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<audio id="audio-el" preload="none"></audio>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const audio     = document.getElementById('audio-el');
+const player    = document.getElementById('player');
+const playBtn   = document.getElementById('play-btn');
+const progFill  = document.getElementById('progress-fill');
+const curTime   = document.getElementById('cur-time');
+const totTime   = document.getElementById('tot-time');
+const pTrack    = document.getElementById('player-track');
+const pArtist   = document.getElementById('player-artist');
+const pArt      = document.getElementById('player-art');
+const modeBadge = document.getElementById('player-mode-badge');
+const loading   = document.getElementById('player-loading');
+
+let currentRow  = null;
+
+function fmt(s) {
+    s = Math.floor(s || 0);
+    return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+}
+
+function setPlaying(row) {
+    document.querySelectorAll('.track-row').forEach(r => {
+        r.classList.remove('playing');
+        r.querySelector('.num-label').style.display = '';
+        r.querySelector('.play-icon').style.display  = 'none';
+    });
+    if (row) {
+        row.classList.add('playing');
+        row.querySelector('.num-label').style.display = 'none';
+        row.querySelector('.play-icon').style.display  = '';
+        row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    currentRow = row;
+}
+
+function showPlayer(name, artist, cover, mode) {
+    pTrack.textContent  = name;
+    pArtist.textContent = artist;
+    modeBadge.textContent = mode;
+    modeBadge.style.background = mode === 'FULL SONG'
+        ? 'rgba(29,185,84,.25)' : 'var(--surface)';
+    modeBadge.style.color = mode === 'FULL SONG'
+        ? 'var(--green)' : 'var(--muted)';
+    if (cover) {
+        pArt.innerHTML = `<img src="${cover}" style="width:100%;height:100%;border-radius:6px;object-fit:cover">`;
+    } else {
+        pArt.textContent = '🎵';
+    }
+    player.classList.add('visible');
+    document.body.classList.add('player-open');
+    progFill.style.width = '0%';
+    curTime.textContent = '0:00';
+    totTime.textContent = '--:--';
+}
+
+function playPreview(row) {
+    const url    = row.dataset.preview;
+    const name   = row.dataset.name;
+    const artist = row.dataset.artist;
+    const cover  = row.dataset.cover;
+    if (!url) { playFull(row); return; }
+    audio.pause();
+    audio.src = url;
+    audio.load();
+    audio.play();
+    setPlaying(row);
+    showPlayer(name, artist, cover, '30s');
+    loading.style.display = 'none';
+    playBtn.textContent = '⏸';
+}
+
+function playFull(row) {
+    const name   = row.dataset.name;
+    const artist = row.dataset.artist;
+    const cover  = row.dataset.cover;
+    audio.pause();
+    audio.src = '';
+    setPlaying(row);
+    showPlayer(name, artist, cover, 'FULL SONG');
+    playBtn.textContent = '⏸';
+
+    // Show loading spinner while yt-dlp extracts the URL
+    loading.style.display = 'flex';
+
+    const streamUrl = `/stream?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(name)}`;
+    audio.src = streamUrl;
+    audio.load();
+    audio.play().then(() => {
+        loading.style.display = 'none';
+    }).catch(() => {
+        loading.style.display = 'none';
+        playBtn.textContent = '▶';
+    });
+}
+
+function playTrack(row) {
+    // Clicking the row plays preview if available, otherwise full song
+    const hasPreview = !!row.dataset.preview;
+    if (hasPreview) playPreview(row);
+    else playFull(row);
+}
+
+function togglePlayPause() {
+    if (audio.paused) {
+        audio.play();
+        playBtn.textContent = '⏸';
+    } else {
+        audio.pause();
+        playBtn.textContent = '▶';
+    }
+}
+
+function seek(e) {
+    if (!audio.duration) return;
+    const bar  = document.getElementById('progress-bar');
+    const rect = bar.getBoundingClientRect();
+    const pct  = (e.clientX - rect.left) / rect.width;
+    audio.currentTime = pct * audio.duration;
+}
+
+audio.addEventListener('timeupdate', () => {
+    if (!audio.duration) return;
+    const pct = (audio.currentTime / audio.duration) * 100;
+    progFill.style.width = pct + '%';
+    curTime.textContent  = fmt(audio.currentTime);
+    totTime.textContent  = fmt(audio.duration);
+});
+
+audio.addEventListener('ended', () => {
+    playBtn.textContent = '▶';
+    // Auto-advance to next track
+    if (currentRow) {
+        const rows = Array.from(document.querySelectorAll('.track-row'));
+        const next = rows[rows.indexOf(currentRow) + 1];
+        if (next) playTrack(next);
+    }
+});
+
+audio.addEventListener('play',  () => { playBtn.textContent = '⏸'; });
+audio.addEventListener('pause', () => { playBtn.textContent = '▶'; });
+audio.addEventListener('canplay', () => { loading.style.display = 'none'; });
+audio.addEventListener('waiting', () => {
+    if (modeBadge.textContent === 'FULL SONG')
+        loading.style.display = 'flex';
+});
+
+// Lazy-load per-track cover art for playlist tracks (those without a cover_url)
+document.querySelectorAll('.track-thumb[data-spotify-url]').forEach(el => {
+    const surl = el.dataset.spotifyUrl;
+    if (!surl || el.tagName === 'IMG') return;   // already has art
+    fetch(`/track_art?url=${encodeURIComponent(surl)}`)
+        .then(r => r.json())
+        .then(d => {
+            if (d.cover_url) {
+                const img = document.createElement('img');
+                img.src = d.cover_url;
+                img.style.cssText = 'width:100%;height:100%;border-radius:6px;object-fit:cover';
+                el.innerHTML = '';
+                el.appendChild(img);
+                // Also update data-cover on the row for the player
+                el.closest('.track-row').dataset.cover = d.cover_url;
+            }
+        }).catch(() => {});
+});
+</script>
+{% endblock %}

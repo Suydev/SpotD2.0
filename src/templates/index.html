@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}SpotDL — Download Spotify Playlists & YouTube Videos{% endblock %}
+
+{% block content %}
+<div class="page">
+
+
+    <!-- ── SPOTIFY PLAYLIST ── -->
+    <div class="card">
+        <div class="card-title">🎧 Spotify Playlist</div>
+
+        <form action="/start_download" method="POST" id="dl-form">
+            <div style="margin-bottom:14px">
+                <label>Spotify Playlist or Album URL</label>
+                <input type="url" id="playlist_url" name="playlist_url"
+                       placeholder="https://open.spotify.com/playlist/… or /album/…">
+                <div class="hint-links" style="margin-top:8px">
+                    <span style="font-size:.75em;color:var(--muted)">Try these:</span>
+                    <a class="hint-link" href="#" onclick="setPlaylist('https://open.spotify.com/playlist/1c1jMO1OuHVuaHdx7B83R3','Today\'s Hits Clean 2026');return false">Today's Hits Clean 2026</a>
+                    <a class="hint-link" href="#" onclick="setPlaylist('https://open.spotify.com/playlist/4Jb4PDWREzNnbZcOHPcZPy','Country Hits 2025');return false">Country Hits 2025</a>
+                    <a class="hint-link" href="#" onclick="setPlaylist('https://open.spotify.com/album/4TAUgrPMoySQAGKignMCbL','Montagem Pegadora (Album)');return false">Montagem Pegadora</a>
+                </div>
+            </div>
+
+            <div class="two-col" style="margin-bottom:14px">
+                <div>
+                    <label>Max songs (1–300)</label>
+                    <input type="number" name="max_songs" value="{{ settings.max_songs }}" min="1" max="300">
+                </div>
+                <div>
+                    <label>Songs per batch</label>
+                    <input type="number" name="chunk_size" value="{{ settings.chunk_size }}" min="1" max="50">
+                </div>
+            </div>
+
+            <div style="margin-bottom:18px">
+                <label>Audio quality</label>
+                <div class="quality-group">
+                    {% set q = settings.audio_quality %}
+                    <label class="quality-pill {% if q == 'mp3-128' %}active{% endif %}">
+                        <input type="radio" name="audio_quality" value="mp3-128" style="display:none" {% if q == 'mp3-128' %}checked{% endif %}>
+                        128 kbps
+                    </label>
+                    <label class="quality-pill {% if q == 'mp3-192' %}active{% endif %}">
+                        <input type="radio" name="audio_quality" value="mp3-192" style="display:none" {% if q == 'mp3-192' %}checked{% endif %}>
+                        192 kbps
+                    </label>
+                    <label class="quality-pill {% if q not in ['mp3-128','mp3-192','flac'] %}active{% endif %}">
+                        <input type="radio" name="audio_quality" value="mp3-320" style="display:none" {% if q not in ['mp3-128','mp3-192','flac'] %}checked{% endif %}>
+                        320 kbps
+                    </label>
+                    <label class="quality-pill {% if q == 'flac' %}active{% endif %}">
+                        <input type="radio" name="audio_quality" value="flac" style="display:none" {% if q == 'flac' %}checked{% endif %}>
+                        FLAC
+                    </label>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:10px">
+                <button type="button" class="btn btn-full btn-lg"
+                        style="background:var(--surface);border:1px solid var(--border);flex:0 0 auto;padding-left:20px;padding-right:20px"
+                        onclick="browsePlaylist()">👁 Browse</button>
+                <button type="submit" class="btn btn-green btn-full btn-lg" style="flex:1">🚀 Download</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- ── YOUTUBE VIDEO ── -->
+    <div class="card">
+        <div class="card-title">📼 YouTube Video</div>
+        <form action="/download_video" method="POST">
+            <div style="margin-bottom:14px">
+                <label>YouTube Video URL</label>
+                <input type="url" name="video_url" placeholder="https://www.youtube.com/watch?v=…">
+            </div>
+            <div style="margin-bottom:18px">
+                <label>Video quality</label>
+                <div class="quality-group">
+                    {% set vq = settings.video_quality %}
+                    {% for res in ['360p','480p','720p','1080p'] %}
+                    <label class="quality-pill {% if vq == res %}active{% endif %}">
+                        <input type="radio" name="video_quality" value="{{ res }}" style="display:none" {% if vq == res %}checked{% endif %}>
+                        {{ res }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-full btn-lg"
+                    style="background:linear-gradient(90deg,#c00,#e00);color:#fff">
+                🎬 DOWNLOAD VIDEO
+            </button>
+        </form>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Quality pill toggle
+    document.querySelectorAll('.quality-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+            const name = pill.querySelector('input').name;
+            document.querySelectorAll(`.quality-pill input[name="${name}"]`).forEach(i => {
+                i.closest('.quality-pill').classList.remove('active');
+            });
+            pill.classList.add('active');
+        });
+    });
+
+    function setPlaylist(url, name) {
+        document.getElementById('playlist_url').value = url;
+        // Clear any previous selection highlight
+        document.querySelectorAll('.playlist-item').forEach(el => el.classList.remove('selected'));
+        // Toast
+        showToast('✅ Selected: ' + name);
+    }
+
+    function showToast(msg) {
+        const t = document.createElement('div');
+        t.style.cssText = 'position:fixed;top:70px;right:18px;background:var(--green);color:#000;padding:10px 16px;border-radius:10px;font-size:.85em;font-weight:700;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.4)';
+        t.textContent = msg;
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 2800);
+    }
+
+    function escHtml(s) {
+        return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function browsePlaylist() {
+        const url = document.getElementById('playlist_url').value.trim();
+        if (!url) { showToast('Paste a Spotify URL first'); return; }
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/browse';
+        const inp = document.createElement('input');
+        inp.name = 'playlist_url'; inp.value = url;
+        form.appendChild(inp);
+        document.body.appendChild(form);
+        form.submit();
+    }
+</script>
+{% endblock %}

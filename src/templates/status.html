@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Download Status — SpotDL{% endblock %}
+
+{% block content %}
+<div class="page" style="max-width:600px">
+    <div class="card" id="status-card">
+        <div class="spinner"></div>
+        <p style="text-align:center;color:var(--muted)">Loading…</p>
+    </div>
+    <div style="text-align:center;margin-top:10px">
+        <a href="/" class="btn btn-ghost">← New Download</a>
+        <a href="/downloads" class="btn btn-ghost" style="margin-left:8px">📂 All Downloads</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const DL_ID = {{ download_id | tojson }};
+let timer = null;
+
+const STATUS_LABEL = {
+    initializing:       'Initialising…',
+    fetching_playlist:  'Fetching playlist from Spotify…',
+    downloading:        'Downloading tracks…',
+    creating_zip:       'Packaging into ZIP…',
+};
+
+function stop() { clearInterval(timer); }
+
+function render(data) {
+    const card = document.getElementById('status-card');
+
+    if (data.status === 'not_found') {
+        stop();
+        card.innerHTML = `
+            <div style="text-align:center;padding:20px">
+                <div style="font-size:2em;margin-bottom:12px">❓</div>
+                <div style="font-weight:700;margin-bottom:8px">Session not found</div>
+                <p style="color:var(--muted);font-size:.88em">This download may have expired. Start a new one.</p>
+            </div>`;
+        return;
+    }
+
+    if (data.status === 'error') {
+        stop();
+        card.innerHTML = `
+            <div style="background:rgba(255,69,58,.08);border:1px solid rgba(255,69,58,.25);border-radius:12px;padding:20px">
+                <div style="color:var(--red);font-weight:700;margin-bottom:6px">⚠️ Download Failed</div>
+                <p style="font-size:.88em;color:rgba(255,255,255,.7)">${escHtml(data.error || 'Unknown error')}</p>
+            </div>
+            <div style="margin-top:14px;text-align:center">
+                <a href="/" class="btn btn-green">Try Again</a>
+            </div>`;
+        return;
+    }
+
+    if (data.status === 'completed') {
+        stop();
+        const dlBtn = data.file_deleted
+            ? `<div style="background:rgba(29,185,84,.08);border:1px solid rgba(29,185,84,.2);border-radius:12px;padding:14px;font-size:.88em;color:var(--muted);text-align:center">
+                   ✅ File saved to your device — removed from server.
+               </div>`
+            : `<a href="/download/${DL_ID}" class="btn btn-green btn-full btn-lg" style="margin-top:4px">📥 Download ZIP</a>`;
+        const nextBtn = data.has_next
+            ? `<a href="/next_chunk/${DL_ID}" class="btn btn-ghost btn-full" style="margin-top:8px">⏭ Next Batch (${data.chunk_size || 15} songs)</a>`
+            : `<p style="text-align:center;font-size:.82em;color:var(--muted);margin-top:12px">🎉 All songs downloaded!</p>`;
+        card.innerHTML = `
+            <div style="text-align:center;margin-bottom:20px">
+                <div style="font-size:2.5em;margin-bottom:8px">🎉</div>
+                <div style="font-weight:800;font-size:1.15em;margin-bottom:4px">${escHtml(data.playlist_name || 'Download')}</div>
+                ${data.chunk_label ? `<div class="badge badge-info">${escHtml(data.chunk_label)}</div>` : ''}
+            </div>
+            <div style="display:flex;gap:12px;margin-bottom:20px">
+                <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center">
+                    <div style="font-size:1.6em;font-weight:800;color:var(--green)">${data.downloaded || 0}</div>
+                    <div style="font-size:.75em;color:var(--muted)">Downloaded</div>
+                </div>
+                <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center">
+                    <div style="font-size:1.6em;font-weight:800;color:var(--green)">${data.total || 0}</div>
+                    <div style="font-size:.75em;color:var(--muted)">In Batch</div>
+                </div>
+                <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center">
+                    <div style="font-size:1.0em;font-weight:800;color:var(--green)">${escHtml(data.quality || '—')}</div>
+                    <div style="font-size:.75em;color:var(--muted)">Quality</div>
+                </div>
+            </div>
+            ${dlBtn}
+            ${nextBtn}`;
+        return;
+    }
+
+    // In-progress
+    const pct  = data.progress || 0;
+    const lbl  = STATUS_LABEL[data.status] || 'Processing…';
+    card.innerHTML = `
+        <div style="font-weight:700;font-size:1.05em;margin-bottom:4px">${escHtml(data.playlist_name || 'Processing…')}</div>
+        ${data.chunk_label ? `<div class="badge badge-info" style="margin-bottom:14px">${escHtml(data.chunk_label)}</div>` : ''}
+        <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:.78em;color:var(--muted);margin-bottom:16px">
+            <span>${lbl}</span><span>${pct}%</span>
+        </div>
+        ${data.current_song ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:.88em;margin-bottom:14px">
+            <span style="color:var(--muted);font-size:.8em">NOW DOWNLOADING</span><br>
+            <span style="font-weight:600">${escHtml(data.current_song)}</span>
+        </div>` : ''}
+        <div style="display:flex;gap:12px">
+            <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">
+                <div style="font-size:1.5em;font-weight:800;color:var(--green)">${data.downloaded || 0}</div>
+                <div style="font-size:.72em;color:var(--muted)">Done</div>
+            </div>
+            <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">
+                <div style="font-size:1.5em;font-weight:800;color:var(--green)">${data.total || '?'}</div>
+                <div style="font-size:.72em;color:var(--muted)">Total</div>
+            </div>
+        </div>`;
+}
+
+function escHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function poll() {
+    fetch('/api/status/' + DL_ID)
+        .then(r => r.json())
+        .then(data => {
+            render(data);
+            if (['completed','error','not_found'].includes(data.status)) stop();
+        })
+        .catch(() => {});
+}
+
+poll();
+timer = setInterval(poll, 2000);
+</script>
+{% endblock %}

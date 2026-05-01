@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Deploy Guide — SpotDL{% endblock %}
+
+{% block content %}
+<div class="page" style="max-width:660px">
+    <h1 style="font-size:1.3em;font-weight:800;margin-bottom:4px">🚀 Deploy Guide</h1>
+    <p style="font-size:.82em;color:var(--muted);margin-bottom:24px">Run SpotDL on your own server for free</p>
+
+    <div class="card">
+        <div class="card-title">🐳 Docker (Recommended)</div>
+        <p style="font-size:.88em;color:rgba(255,255,255,.7);margin-bottom:16px;line-height:1.6">
+            Spin up the app anywhere Docker runs — your VPS, Raspberry Pi, or any cloud VM.
+        </p>
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:16px;font-family:monospace;font-size:.82em;color:#e6edf3;overflow-x:auto;white-space:pre;margin-bottom:14px">git clone https://github.com/yourname/spotdl
+cd spotdl
+cp .env.example .env        # add your Spotify creds
+docker compose up -d        # starts on port 5000</div>
+        <p style="font-size:.8em;color:var(--muted)">Requires Docker &amp; Docker Compose. The <code>data/</code> folder is mounted as a volume to persist credentials.</p>
+    </div>
+
+    <div class="card">
+        <div class="card-title">☁️ Koyeb (Free, no credit card)</div>
+        <ol style="font-size:.88em;color:rgba(255,255,255,.7);line-height:2;padding-left:18px">
+            <li>Sign up at <a href="https://koyeb.com" target="_blank" style="color:var(--green)">koyeb.com</a> (free tier available)</li>
+            <li>Create a new App → choose <strong>Docker</strong> source</li>
+            <li>Point to your GitHub repo or paste the Docker image</li>
+            <li>Add env vars: <code>SPOTIFY_CLIENT_ID</code> and <code>SPOTIFY_CLIENT_SECRET</code></li>
+            <li>Set port to <strong>5000</strong> and deploy</li>
+        </ol>
+    </div>
+
+    <div class="card">
+        <div class="card-title">🔑 Environment Variables</div>
+        <div style="font-size:.85em;line-height:1.8">
+            <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+                <code style="color:var(--green);min-width:220px">SPOTIFY_CLIENT_ID</code>
+                <span style="color:var(--muted)">Your Spotify app client ID (required)</span>
+            </div>
+            <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+                <code style="color:var(--green);min-width:220px">SPOTIFY_CLIENT_SECRET</code>
+                <span style="color:var(--muted)">Your Spotify app client secret (required)</span>
+            </div>
+            <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+                <code style="color:var(--green);min-width:220px">SESSION_SECRET</code>
+                <span style="color:var(--muted)">Random string for Flask sessions (optional)</span>
+            </div>
+            <div style="display:flex;gap:10px;padding:8px 0">
+                <code style="color:var(--green);min-width:220px">PORT</code>
+                <span style="color:var(--muted)">Port to listen on (default: 5000)</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">ℹ️ Notes</div>
+        <ul style="font-size:.85em;color:rgba(255,255,255,.65);line-height:1.9;padding-left:18px">
+            <li>SpotDL uses <strong>yt-dlp</strong> under the hood — no Spotify Premium required</li>
+            <li>The Spotify API is used only to look up track metadata (100% free tier)</li>
+            <li>Downloaded files are deleted from the server 60 seconds after you save them</li>
+            <li>FFmpeg must be installed in the environment for audio conversion (included in Docker image)</li>
+            <li>Do not expose this app publicly on a large scale — respect YouTube &amp; Spotify ToS</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

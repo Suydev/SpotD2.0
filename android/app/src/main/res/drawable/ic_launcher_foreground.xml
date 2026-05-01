@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- Eighth-note glyph centered in the safe zone -->
+    <path
+        android:fillColor="#0a0a0a"
+        android:pathData="M62,30 L62,62 a10,10 0 1 1 -8,-9.8 L54,38 L78,32 L78,28 z"/>
+</vector>

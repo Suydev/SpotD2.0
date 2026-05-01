@@ -1,0 +1,17 @@
+{
+  "name": "Spotify Downloader",
+  "short_name": "SpotifyDL",
+  "description": "Download public Spotify playlists as high-quality audio zip files.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#191414",
+  "theme_color": "#1DB954",
+  "icons": [
+    {
+      "src": "/static/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

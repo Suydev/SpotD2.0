@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#CDFFD0">
+<meta name="description" content="SpotDL — search any song, album, or playlist and download in seconds. No keys, no premium, no nonsense.">
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<title>SpotDL — Search anything. Download everything.</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --mint:    #CDFFD0;
+    --teal:    #66E0CF;
+    --ink:     #000000;
+    --paper:   #FFFFFF;
+    --sub:     #6B7280;
+    --line:    #E5E7EB;
+    --soft:    #F3F4F6;
+  }
+
+  html, body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.55;
+  }
+  a { color: inherit; text-decoration: none; }
+
+  /* ── ambient mint bg shapes ── */
+  .ambient {
+    position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+  }
+  .ambient::before, .ambient::after {
+    content: ''; position: absolute; border-radius: 50%; filter: blur(80px); opacity: .55;
+  }
+  .ambient::before {
+    width: 520px; height: 520px; left: -160px; top: -160px;
+    background: var(--mint);
+  }
+  .ambient::after {
+    width: 480px; height: 480px; right: -140px; top: 320px;
+    background: var(--teal); opacity: .35;
+  }
+
+  /* ── NAV ── */
+  nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 32px; max-width: 1280px; margin: 0 auto;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.05rem; letter-spacing: -.02em; }
+  .brand-mark {
+    width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center;
+    background: var(--ink); color: var(--mint); font-size: 16px; font-weight: 900;
+  }
+  .nav-actions { display: flex; gap: 10px; align-items: center; }
+  .nav-link {
+    font-size: .92rem; color: var(--sub); padding: 8px 14px; border-radius: 9999px;
+    transition: color .15s, background .15s;
+  }
+  .nav-link:hover { color: var(--ink); background: var(--soft); }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font-weight: 600; font-size: .92rem;
+    padding: 11px 22px; border-radius: 9999px; border: 1px solid transparent;
+    cursor: pointer; transition: transform .15s, background .15s, box-shadow .15s;
+    white-space: nowrap;
+  }
+  .btn-dark { background: var(--ink); color: var(--paper); }
+  .btn-dark:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+  .btn-soft { background: var(--soft); color: var(--ink); }
+  .btn-soft:hover { background: #E8EAEE; }
+  .btn-mint { background: var(--mint); color: var(--ink); }
+  .btn-mint:hover { background: #BFFFC4; box-shadow: 0 8px 24px rgba(102,224,207,.35); }
+  .btn-lg   { padding: 15px 28px; font-size: 1rem; }
+
+  /* ── HERO ── */
+  .hero {
+    max-width: 1080px; margin: 40px auto 24px; padding: 60px 32px 24px;
+    text-align: center;
+  }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--soft); color: var(--ink);
+    padding: 6px 14px; border-radius: 9999px;
+    font-size: .8rem; font-weight: 600; margin-bottom: 22px;
+  }
+  .eyebrow .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--teal); box-shadow: 0 0 0 4px rgba(102,224,207,.25);
+  }
+  .hero h1 {
+    font-size: clamp(2.4rem, 6vw, 4.5rem);
+    font-weight: 800; letter-spacing: -.035em; line-height: 1.04;
+    margin-bottom: 22px;
+  }
+  .hero h1 .accent {
+    background: linear-gradient(90deg, var(--teal), #00C29A);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p.lede {
+    font-size: clamp(1rem, 1.6vw, 1.18rem); color: var(--sub);
+    max-width: 640px; margin: 0 auto 36px;
+  }
+  .cta-row { display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .cta-meta { margin-top: 18px; font-size: .82rem; color: var(--sub); }
+
+  /* ── SHOWCASE ── */
+  .showcase {
+    max-width: 1180px; margin: 60px auto 0; padding: 0 32px;
+  }
+  .showcase-frame {
+    position: relative;
+    background: linear-gradient(180deg, #0a0a0a, #111);
+    border-radius: 28px; padding: 28px;
+    box-shadow: 0 40px 80px -30px rgba(0,0,0,.45),
+                0 0 0 1px rgba(255,255,255,.04) inset;
+    overflow: hidden;
+  }
+  .showcase-frame::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(800px 360px at 50% -10%, rgba(102,224,207,.18), transparent 60%);
+    pointer-events: none;
+  }
+  .showcase-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
+    position: relative;
+  }
+  .demo-card {
+    background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
+    border-radius: 18px; padding: 18px; color: rgba(255,255,255,.85);
+  }
+  .demo-card h4 {
+    font-size: .72rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--mint); margin-bottom: 10px; font-weight: 700;
+  }
+  .demo-row {
+    display: flex; align-items: center; gap: 10px; padding: 9px 0;
+    border-bottom: 1px solid rgba(255,255,255,.05); font-size: .88rem;
+  }
+  .demo-row:last-child { border: 0; }
+  .demo-thumb {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: linear-gradient(135deg, #66E0CF33, #CDFFD033);
+    display: grid; place-items: center; flex-shrink: 0;
+    color: var(--mint); font-weight: 700; font-size: .8rem;
+  }
+  .demo-meta { font-size: .72rem; color: rgba(255,255,255,.5); }
+  .demo-progress {
+    height: 6px; background: rgba(255,255,255,.08); border-radius: 999px; overflow: hidden;
+  }
+  .demo-progress > div {
+    height: 100%; width: 78%;
+    background: linear-gradient(90deg, var(--teal), var(--mint));
+    border-radius: 999px;
+  }
+  .demo-stat {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin: 6px 0;
+  }
+  .demo-stat strong {
+    font-size: 1.6rem; font-weight: 800; color: var(--paper);
+    background: linear-gradient(90deg, var(--mint), var(--teal));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  @media (max-width: 860px) {
+    .showcase-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── FEATURES ── */
+  .features {
+    max-width: 1080px; margin: 80px auto 0; padding: 0 32px;
+  }
+  .features-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
+  }
+  .feature {
+    background: var(--paper); border: 1px solid var(--line); border-radius: 22px;
+    padding: 26px; transition: transform .15s, box-shadow .15s;
+  }
+  .feature:hover { transform: translateY(-3px); box-shadow: 0 16px 40px -20px rgba(0,0,0,.18); }
+  .feature-icon {
+    width: 44px; height: 44px; border-radius: 12px; background: var(--mint);
+    display: grid; place-items: center; margin-bottom: 16px; font-size: 22px;
+  }
+  .feature h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; letter-spacing: -.01em; }
+  .feature p  { color: var(--sub); font-size: .92rem; }
+  @media (max-width: 860px) { .features-grid { grid-template-columns: 1fr; } }
+
+  /* ── HOW IT WORKS ── */
+  .steps { max-width: 1080px; margin: 80px auto 0; padding: 0 32px; }
+  .steps-head { text-align: center; margin-bottom: 40px; }
+  .steps-head h2 { font-size: clamp(1.8rem, 4vw, 2.6rem); letter-spacing: -.03em; font-weight: 800; }
+  .steps-head p  { color: var(--sub); margin-top: 10px; }
+  .steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .step {
+    border: 1px solid var(--line); border-radius: 22px; padding: 26px;
+    background: linear-gradient(180deg, var(--paper), #FBFBFB);
+  }
+  .step-num {
+    display: inline-grid; place-items: center;
+    width: 32px; height: 32px; border-radius: 9999px;
+    background: var(--ink); color: var(--mint); font-weight: 800; font-size: .9rem;
+    margin-bottom: 14px;
+  }
+  .step h4 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+  .step p  { color: var(--sub); font-size: .9rem; }
+  @media (max-width: 860px) { .steps-grid { grid-template-columns: 1fr; } }
+
+  /* ── CTA STRIP ── */
+  .cta-strip {
+    max-width: 1080px; margin: 90px auto 60px; padding: 48px 32px;
+    background: var(--ink); color: var(--paper); border-radius: 28px;
+    text-align: center; position: relative; overflow: hidden;
+  }
+  .cta-strip::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(600px 240px at 50% 0%, rgba(102,224,207,.2), transparent 70%);
+  }
+  .cta-strip h2 {
+    font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800; letter-spacing: -.025em;
+    position: relative; margin-bottom: 12px;
+  }
+  .cta-strip p { color: rgba(255,255,255,.7); margin-bottom: 24px; position: relative; }
+  .cta-strip .btn-mint { position: relative; }
+
+  /* ── FOOTER ── */
+  footer {
+    max-width: 1080px; margin: 0 auto; padding: 24px 32px 40px;
+    color: var(--sub); font-size: .85rem;
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+</style>
+</head>
+<body>
+<div class="ambient"></div>
+
+<nav>
+  <a href="/landing" class="brand">
+    <span class="brand-mark">♪</span>
+    <span>SpotDL</span>
+  </a>
+  <div class="nav-actions">
+    <a href="#features" class="nav-link">Features</a>
+    <a href="#how" class="nav-link">How it works</a>
+    {% if auth_enabled and not is_authed %}
+      <a href="/login" class="btn btn-dark">Sign in</a>
+    {% else %}
+      <a href="/" class="btn btn-dark">Open app</a>
+    {% endif %}
+  </div>
+</nav>
+
+<section class="hero">
+  <span class="eyebrow"><span class="dot"></span> No API keys · No premium · Just music</span>
+  <h1>Search anything.<br><span class="accent">Download everything.</span></h1>
+  <p class="lede">
+    Type a song, album, or playlist. We grab it from Spotify's catalog, pull crisp audio
+    from YouTube, tag it with cover art &amp; lyrics, and zip it for you in seconds.
+  </p>
+  <div class="cta-row">
+    {% if auth_enabled and not is_authed %}
+      <a href="/login" class="btn btn-dark btn-lg">Sign in to start →</a>
+      <a href="#features" class="btn btn-soft btn-lg">See features</a>
+    {% else %}
+      <a href="/" class="btn btn-dark btn-lg">Launch app →</a>
+      <a href="#how" class="btn btn-soft btn-lg">How it works</a>
+    {% endif %}
+  </div>
+  <div class="cta-meta">320 kbps · MP3 · cover art · lyrics · 3-day file retention</div>
+</section>
+
+<section class="showcase">
+  <div class="showcase-frame">
+    <div class="showcase-grid">
+
+      <div class="demo-card">
+        <h4>🎵 Search results</h4>
+        <div class="demo-row">
+          <div class="demo-thumb">BL</div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Blinding Lights</div>
+            <div class="demo-meta">The Weeknd · 3:20</div>
+          </div>
+          <div style="color: var(--mint);">⬇</div>
+        </div>
+        <div class="demo-row">
+          <div class="demo-thumb">MN</div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Midnights</div>
+            <div class="demo-meta">Taylor Swift · 23 tracks</div>
+          </div>
+          <div style="color: var(--mint);">⬇</div>
+        </div>
+        <div class="demo-row">
+          <div class="demo-thumb">AM</div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">AM</div>
+            <div class="demo-meta">Arctic Monkeys · 12 tracks</div>
+          </div>
+          <div style="color: var(--mint);">⬇</div>
+        </div>
+      </div>
+
+      <div class="demo-card">
+        <h4>⚡ Live progress</h4>
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom: 8px;">
+          <div class="demo-thumb">▶</div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-weight:600;">Maroon</div>
+            <div class="demo-meta">Taylor Swift</div>
+          </div>
+          <div style="color: var(--mint); font-weight:700;">78%</div>
+        </div>
+        <div class="demo-progress"><div></div></div>
+        <div style="margin-top:14px;">
+          <div class="demo-row">
+            <div style="width:18px; height:18px; border-radius:50%; background:var(--mint); display:grid; place-items:center; color:#000; font-size:11px;">✓</div>
+            <span style="flex:1;">Lavender Haze</span>
+            <span class="demo-meta">tagged</span>
+          </div>
+          <div class="demo-row">
+            <div style="width:18px; height:18px; border-radius:50%; background:var(--teal); display:grid; place-items:center; color:#000; font-size:11px;">↓</div>
+            <span style="flex:1;">Anti-Hero</span>
+            <span class="demo-meta">downloading</span>
+          </div>
+          <div class="demo-row">
+            <div style="width:18px; height:18px; border-radius:50%; background:rgba(255,255,255,.1);"></div>
+            <span style="flex:1; color: rgba(255,255,255,.5);">Snow on the Beach</span>
+            <span class="demo-meta">queued</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo-card">
+        <h4>📊 Your library</h4>
+        <div class="demo-stat">
+          <span class="demo-meta">Songs grabbed</span>
+          <strong>1,284</strong>
+        </div>
+        <div class="demo-stat">
+          <span class="demo-meta">Total downloads</span>
+          <strong>147</strong>
+        </div>
+        <div class="demo-stat">
+          <span class="demo-meta">Storage used</span>
+          <strong>9.2 GB</strong>
+        </div>
+        <div style="margin-top:18px; padding-top:16px; border-top: 1px solid rgba(255,255,255,.06);">
+          <div class="demo-meta" style="margin-bottom: 6px;">Active now</div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--teal); box-shadow:0 0 0 4px rgba(102,224,207,.25);"></span>
+            <span>2 downloads in flight</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="steps-head">
+    <h2>Built for music hoarders.</h2>
+    <p>Every detail tuned for speed, polish, and total ownership of your collection.</p>
+  </div>
+  <div class="features-grid">
+    <div class="feature">
+      <div class="feature-icon">🔎</div>
+      <h3>Catalog-wide search</h3>
+      <p>Type any artist, song, album, or playlist. Cover art, year, and track counts up front — no copy-pasting Spotify links.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">⚡</div>
+      <h3>4× parallel downloads</h3>
+      <p>Configurable workers grab tracks in parallel. A 25-song album finishes in under a minute on a decent connection.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🎨</div>
+      <h3>Tagged &amp; gorgeous</h3>
+      <p>Each MP3 ships with embedded cover art, year, album, artist, and synced lyrics where available. Drop into any player.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">📱</div>
+      <h3>QR for mobile</h3>
+      <p>Every finished ZIP gets a QR code. Scan it from your phone, file lands instantly. Perfect for AirDrop replacements.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🗄️</div>
+      <h3>3-day retention</h3>
+      <p>Files stick around for 72 hours so you can re-download from a new device. After that, they auto-clean to keep things tidy.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🛡️</div>
+      <h3>Restart-safe sessions</h3>
+      <p>Your download history persists across restarts. Crashes, deploys, reboots — your library stays put.</p>
+    </div>
+  </div>
+</section>
+
+<section class="steps" id="how">
+  <div class="steps-head">
+    <h2>From query to MP3 in three steps.</h2>
+    <p>Honestly, it's almost too easy.</p>
+  </div>
+  <div class="steps-grid">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h4>Search or paste</h4>
+      <p>Hit <kbd style="background:var(--soft); padding:2px 6px; border-radius:4px; font-size:.85em;">/</kbd> and type, or paste any Spotify URL. We resolve it instantly.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h4>Pick &amp; click</h4>
+      <p>Choose your quality (128–320 kbps) and click. Live per-track progress shows you exactly where things stand.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h4>Grab the ZIP</h4>
+      <p>Download in your browser, or scan the QR with your phone. Done. Your collection grows.</p>
+    </div>
+  </div>
+</section>
+
+<section class="cta-strip">
+  <h2>Ready to start hoarding?</h2>
+  <p>It takes about 8 seconds to download a 2-track album. We timed it.</p>
+  {% if auth_enabled and not is_authed %}
+    <a href="/login" class="btn btn-mint btn-lg">Sign in to start →</a>
+  {% else %}
+    <a href="/" class="btn btn-mint btn-lg">Open SpotDL →</a>
+  {% endif %}
+</section>
+
+<footer>
+  <div>© SpotDL · Built with Flask + yt-dlp</div>
+  <div>For personal use only · Respect your local copyright laws</div>
+</footer>
+
+</body>
+</html>

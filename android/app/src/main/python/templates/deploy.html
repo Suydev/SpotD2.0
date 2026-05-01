@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Run Anywhere — SpotDL{% endblock %}
+
+{% block content %}
+<div class="page" style="max-width:680px">
+    <h1 style="font-size:1.3em;font-weight:800;margin-bottom:4px">🚀 Run Anywhere</h1>
+    <p style="font-size:.82em;color:var(--muted);margin-bottom:24px">
+        SpotDL is a single-file Flask app — install in seconds on a laptop, server, or even Android (Termux).
+    </p>
+
+    <!-- ── ONE-LINER ── -->
+    <div class="card" style="border-color:rgba(29,185,84,.3);background:rgba(29,185,84,.05)">
+        <div class="card-title">⚡ One-Line Install (Linux / macOS / Termux)</div>
+        <p style="font-size:.85em;color:rgba(255,255,255,.7);margin-bottom:14px">
+            Clones the repo, installs Python deps + ffmpeg, starts the server on
+            <code>http://localhost:5000</code>.
+        </p>
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:14px;font-family:monospace;font-size:.82em;color:#e6edf3;overflow-x:auto;white-space:pre">curl -fsSL https://raw.githubusercontent.com/yourname/spotdl/main/install.sh | bash</div>
+        <p style="font-size:.78em;color:var(--muted);margin-top:10px">
+            Or clone &amp; run manually:
+        </p>
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:14px;font-family:monospace;font-size:.82em;color:#e6edf3;overflow-x:auto;white-space:pre;margin-top:6px">git clone https://github.com/yourname/spotdl &amp;&amp; cd spotdl
+bash install.sh                # installs deps + starts server</div>
+    </div>
+
+    <!-- ── TERMUX ── -->
+    <div class="card">
+        <div class="card-title">📱 Android (Termux)</div>
+        <ol style="font-size:.85em;color:rgba(255,255,255,.7);line-height:2;padding-left:18px">
+            <li>Install Termux from <a href="https://f-droid.org/packages/com.termux/" target="_blank" style="color:var(--green)">F-Droid</a></li>
+            <li>Run: <code>pkg update &amp;&amp; pkg install python ffmpeg git -y</code></li>
+            <li>Run: <code>git clone https://github.com/yourname/spotdl &amp;&amp; cd spotdl</code></li>
+            <li>Run: <code>pip install -r requirements.txt</code></li>
+            <li>Run: <code>python src/web_app.py</code> &amp; open <code>http://localhost:5000</code></li>
+        </ol>
+    </div>
+
+    <!-- ── SERVER / VPS ── -->
+    <div class="card">
+        <div class="card-title">🖥 Server / VPS (production)</div>
+        <p style="font-size:.85em;color:rgba(255,255,255,.7);margin-bottom:10px">
+            Run with gunicorn behind a reverse proxy:
+        </p>
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:14px;font-family:monospace;font-size:.82em;color:#e6edf3;overflow-x:auto;white-space:pre">pip install -r requirements.txt
+gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout 600 --chdir src web_app:app</div>
+    </div>
+
+    <!-- ── DOCKER ── -->
+    <div class="card">
+        <div class="card-title">🐳 Docker</div>
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:14px;font-family:monospace;font-size:.82em;color:#e6edf3;overflow-x:auto;white-space:pre">docker compose up -d         # starts on port 5000</div>
+        <p style="font-size:.78em;color:var(--muted);margin-top:10px">
+            Volumes <code>spotd_data</code> and <code>spotd_downloads</code> persist your
+            settings and downloaded files between restarts.
+        </p>
+    </div>
+
+    <!-- ── ENV VARS ── -->
+    <div class="card">
+        <div class="card-title">🔧 Environment Variables (all optional)</div>
+        <div style="font-size:.85em;line-height:1.8">
+            <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+                <code style="color:var(--green);min-width:200px">PORT</code>
+                <span style="color:var(--muted)">Port to listen on (default 5000)</span>
+            </div>
+            <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+                <code style="color:var(--green);min-width:200px">SESSION_SECRET</code>
+                <span style="color:var(--muted)">Random string for Flask sessions (auto-generated if missing)</span>
+            </div>
+            <div style="display:flex;gap:10px;padding:8px 0">
+                <code style="color:var(--green);min-width:200px">FLASK_DEBUG</code>
+                <span style="color:var(--muted)">Set to <code>true</code> for dev mode</span>
+            </div>
+        </div>
+        <p style="font-size:.78em;color:var(--muted);margin-top:14px">
+            ✅ <strong>No Spotify or YouTube credentials needed.</strong>
+            All metadata comes from public embed pages.
+        </p>
+    </div>
+
+    <div class="card">
+        <div class="card-title">ℹ️ Notes</div>
+        <ul style="font-size:.85em;color:rgba(255,255,255,.65);line-height:1.9;padding-left:18px">
+            <li><strong>ffmpeg</strong> is required for audio conversion (installed automatically by <code>install.sh</code>)</li>
+            <li>Files persist on the server until they exceed the retention window (configure in Settings)</li>
+            <li>You can re-download the same ZIP as many times as you want from the Downloads page</li>
+            <li>Respect YouTube and Spotify terms of service when sharing this app</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

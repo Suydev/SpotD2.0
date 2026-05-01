@@ -1,0 +1,14 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "nIpGKnUPv9Y9yIEGgs8zD"
+uri = "file://android/build-output/SpotDL-debug-apk.zip"
+type = "unspecified"
+title = "SpotDL Android APK (debug build)"
+
+[[outputs]]
+id = "_NFQvJ1bc0nrrrlEFSJgc"
+uri = "file://android/build-output/SpotDL-heavy-debug-apk.zip"
+type = "unspecified"
+title = "SpotDL-heavy-debug.apk (46 MB) — extract to install"

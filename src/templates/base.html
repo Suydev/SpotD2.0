@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1DB954">
+    <link rel="manifest" href="/static/manifest.webmanifest">
+    <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+    <title>{% block title %}SpotDL{% endblock %}</title>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --green:   #1DB954;
+            --green2:  #1ed760;
+            --bg:      #0a0a0a;
+            --surface: rgba(255,255,255,.05);
+            --surface2:rgba(255,255,255,.03);
+            --border:  rgba(255,255,255,.09);
+            --text:    rgba(255,255,255,.88);
+            --muted:   rgba(255,255,255,.45);
+            --red:     #ff453a;
+            --yellow:  #ffd60a;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ── NAV ── */
+        nav {
+            position: sticky; top: 0; z-index: 100;
+            background: rgba(10,10,10,.9);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center;
+            padding: 0 24px; height: 54px; gap: 6px;
+        }
+        .nav-brand {
+            font-weight: 800; font-size: 1.1em;
+            color: var(--green); text-decoration: none;
+            margin-right: 16px; letter-spacing: -.3px;
+        }
+        .nav-brand span { color: var(--text); }
+        nav a.nav-link {
+            text-decoration: none; font-size: .85em; font-weight: 500;
+            color: var(--muted); padding: 6px 12px; border-radius: 8px;
+            transition: all .15s; white-space: nowrap;
+        }
+        nav a.nav-link:hover { color: var(--text); background: var(--surface); }
+        nav a.nav-link.active { color: var(--text); background: var(--surface); }
+        .nav-badge {
+            background: var(--green); color: #000; border-radius: 999px;
+            font-size: .65em; font-weight: 800; padding: 1px 6px; margin-left: 4px;
+        }
+
+        /* ── FLASH MESSAGES ── */
+        .flashes { max-width: 720px; margin: 16px auto; padding: 0 20px; }
+        .flash {
+            padding: 12px 16px; border-radius: 10px; font-size: .88em;
+            margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+        }
+        .flash-success { background: rgba(29,185,84,.12); border: 1px solid rgba(29,185,84,.3); color: var(--green2); }
+        .flash-error   { background: rgba(255,69,58,.1);  border: 1px solid rgba(255,69,58,.25); color: #ff6b61; }
+        .flash-info    { background: rgba(255,255,255,.05); border: 1px solid var(--border); color: var(--text); }
+
+        /* ── PAGE SHELL ── */
+        .page { max-width: 720px; margin: 0 auto; padding: 28px 20px 60px; }
+
+        /* ── CARD ── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 18px; padding: 28px;
+            margin-bottom: 20px;
+        }
+        .card-title {
+            font-size: .72em; font-weight: 700; letter-spacing: 1.2px;
+            text-transform: uppercase; color: var(--green);
+            margin-bottom: 20px; display: flex; align-items: center; gap: 8px;
+        }
+
+        /* ── FORM ELEMENTS ── */
+        label { display: block; font-size: .82em; color: var(--muted); margin-bottom: 6px; }
+        input[type=text], input[type=url], input[type=number], input[type=password], select {
+            width: 100%; padding: 11px 14px;
+            background: rgba(0,0,0,.35); border: 1px solid var(--border);
+            border-radius: 10px; color: var(--text); font-size: .93em;
+            transition: border .15s, box-shadow .15s; outline: none;
+        }
+        input:focus, select:focus {
+            border-color: var(--green);
+            box-shadow: 0 0 0 3px rgba(29,185,84,.15);
+        }
+        input::placeholder { color: var(--muted); }
+
+        /* ── BUTTONS ── */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            gap: 6px; text-decoration: none; font-weight: 600; font-size: .88em;
+            padding: 10px 18px; border-radius: 10px; border: none; cursor: pointer;
+            transition: all .15s; white-space: nowrap;
+        }
+        .btn-green  { background: var(--green);  color: #000; }
+        .btn-green:hover  { background: var(--green2); transform: translateY(-1px); }
+        .btn-red    { background: rgba(255,69,58,.15); color: var(--red); border: 1px solid rgba(255,69,58,.3); }
+        .btn-red:hover    { background: rgba(255,69,58,.25); }
+        .btn-ghost  { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+        .btn-ghost:hover  { background: var(--surface); color: var(--text); }
+        .btn-full   { width: 100%; }
+        .btn-lg     { padding: 13px 24px; font-size: 1em; border-radius: 12px; }
+        .btn-sm     { padding: 6px 12px; font-size: .8em; }
+
+        /* ── QUALITY PILLS ── */
+        .quality-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        .quality-pill {
+            padding: 7px 16px; border-radius: 8px; font-size: .82em; font-weight: 600;
+            border: 1px solid var(--border); background: var(--surface2); color: var(--muted);
+            cursor: pointer; transition: all .15s; user-select: none;
+        }
+        .quality-pill:hover { border-color: var(--green); color: var(--text); }
+        .quality-pill.active { background: var(--green); color: #000; border-color: var(--green); }
+
+        /* ── DIVIDER ── */
+        .divider {
+            display: flex; align-items: center; gap: 12px;
+            color: var(--muted); font-size: .75em; letter-spacing: .8px;
+            text-transform: uppercase; margin: 20px 0;
+        }
+        .divider::before, .divider::after {
+            content: ''; flex: 1; height: 1px; background: var(--border);
+        }
+
+        /* ── BADGE ── */
+        .badge {
+            display: inline-block; padding: 3px 10px; border-radius: 999px;
+            font-size: .72em; font-weight: 700; letter-spacing: .5px;
+        }
+        .badge-ok     { background: rgba(29,185,84,.15); color: var(--green2); }
+        .badge-error  { background: rgba(255,69,58,.12); color: var(--red); }
+        .badge-info   { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+
+        /* ── PROGRESS BAR ── */
+        .progress-track {
+            background: rgba(255,255,255,.08); border-radius: 999px;
+            height: 8px; overflow: hidden; margin: 14px 0;
+        }
+        .progress-fill {
+            background: linear-gradient(90deg, var(--green), var(--green2));
+            height: 100%; border-radius: 999px;
+            transition: width .5s ease; box-shadow: 0 0 8px rgba(29,185,84,.4);
+        }
+
+        /* ── SEARCH RESULT ITEMS ── */
+        .playlist-item {
+            display: flex; align-items: center; gap: 14px;
+            padding: 12px 14px; border-radius: 12px;
+            border: 1px solid var(--border); background: var(--surface2);
+            cursor: pointer; transition: all .15s; margin-bottom: 8px;
+        }
+        .playlist-item:hover { border-color: rgba(29,185,84,.4); background: rgba(29,185,84,.07); }
+        .playlist-item.selected { border-color: var(--green); background: rgba(29,185,84,.12); }
+        .playlist-thumb {
+            width: 52px; height: 52px; border-radius: 8px; object-fit: cover;
+            background: #222; flex-shrink: 0; display: flex; align-items: center;
+            justify-content: center; font-size: 1.4em; color: var(--muted);
+        }
+        .playlist-thumb img { width: 100%; height: 100%; border-radius: 8px; object-fit: cover; }
+        .playlist-name  { font-weight: 600; font-size: .93em; margin-bottom: 3px; }
+        .playlist-meta  { font-size: .78em; color: var(--muted); }
+
+        /* ── SPINNER ── */
+        .spinner {
+            width: 36px; height: 36px; border-radius: 50%;
+            border: 3px solid rgba(255,255,255,.1);
+            border-top-color: var(--green);
+            animation: spin .8s linear infinite; margin: 24px auto;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── MISC ── */
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        @media (max-width: 500px) { .two-col { grid-template-columns: 1fr; } }
+        .hint-links { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+        .hint-link {
+            font-size: .78em; color: var(--green); text-decoration: none;
+            padding: 3px 10px; background: rgba(29,185,84,.1); border-radius: 999px;
+            border: 1px solid rgba(29,185,84,.2);
+        }
+        .hint-link:hover { background: rgba(29,185,84,.2); }
+        details summary { cursor: pointer; font-size: .85em; color: var(--muted); padding: 4px 0; }
+        details summary:hover { color: var(--text); }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <nav>
+        <a href="/" class="nav-brand">♪ Spot<span>DL</span></a>
+        <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">🏠 Home</a>
+        <a href="/downloads" class="nav-link {% if request.path == '/downloads' %}active{% endif %}">
+            📂 Downloads
+            {% if active_count %}<span class="nav-badge">{{ active_count }}</span>{% endif %}
+        </a>
+        <a href="/settings" class="nav-link {% if request.path == '/settings' %}active{% endif %}">⚙️ Settings</a>
+        <a href="/deploy"   class="nav-link {% if request.path == '/deploy' %}active{% endif %}">🚀 Deploy</a>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flashes">
+            {% for cat, msg in messages %}
+            <div class="flash flash-{{ cat if cat in ['success','error'] else 'info' }}">{{ msg }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+
+    <script>
+        // Service worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+        }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

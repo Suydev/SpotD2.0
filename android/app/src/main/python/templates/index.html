@@ -1,0 +1,489 @@
+{% extends "base.html" %}
+{% block title %}SpotDL — Search & Download Spotify + YouTube{% endblock %}
+
+{% block content %}
+<div class="page">
+
+    <!-- ── HERO STATS ── -->
+    <div class="hero" id="hero">
+        <div class="hero-title">
+            <span class="hero-emoji">🎵</span>
+            <span>Search anything. Download everything.</span>
+        </div>
+        <div class="hero-stats" id="hero-stats">
+            <div class="stat"><div class="stat-num" id="stat-songs">—</div><div class="stat-label">songs grabbed</div></div>
+            <div class="stat"><div class="stat-num" id="stat-zips">—</div><div class="stat-label">downloads</div></div>
+            <div class="stat"><div class="stat-num" id="stat-size">—</div><div class="stat-label">total size</div></div>
+        </div>
+    </div>
+
+    <!-- ── SEARCH ── -->
+    <div class="card">
+        <div class="card-title">🔍 Search Spotify <span style="color:var(--muted);font-weight:500;letter-spacing:0;text-transform:none;font-size:1.05em;margin-left:auto">⌘K / press <kbd>/</kbd></span></div>
+
+        <div style="position:relative">
+            <input type="text" id="search-input" autocomplete="off"
+                   placeholder="Type an artist, song, album, or playlist name…">
+            <div id="search-spinner" style="display:none;position:absolute;right:14px;top:50%;transform:translateY(-50%)">
+                <div class="mini-spinner"></div>
+            </div>
+        </div>
+
+        <div class="search-tabs">
+            <button class="search-tab active" data-tab="all">All</button>
+            <button class="search-tab" data-tab="tracks">🎵 Songs</button>
+            <button class="search-tab" data-tab="albums">💿 Albums</button>
+            <button class="search-tab" data-tab="playlists">📚 Playlists</button>
+        </div>
+
+        <div id="search-results" class="search-results"></div>
+        <div id="search-empty" class="search-empty">Type to search Spotify's full catalog — no API key needed.</div>
+    </div>
+
+    <!-- ── DIRECT URL ── -->
+    <div class="card">
+        <div class="card-title">🔗 Or paste a link directly</div>
+
+        <form action="/start_download" method="POST" id="dl-form">
+            <div style="position:relative;margin-bottom:14px">
+                <input type="url" id="playlist_url" name="playlist_url"
+                       placeholder="https://open.spotify.com/playlist/… or /album/… or /track/…">
+                <button type="button" class="paste-btn" onclick="pasteFromClipboard()" title="Paste from clipboard">📋</button>
+            </div>
+
+            <div class="two-col" style="margin-bottom:14px">
+                <div>
+                    <label>Max songs (1–500)</label>
+                    <input type="number" name="max_songs" value="{{ settings.max_songs }}" min="1" max="500">
+                </div>
+                <div>
+                    <label>Songs per batch</label>
+                    <input type="number" name="chunk_size" value="{{ settings.chunk_size }}" min="1" max="100">
+                </div>
+            </div>
+
+            <div style="margin-bottom:18px">
+                <label>Audio quality</label>
+                <div class="quality-group">
+                    {% set q = settings.audio_quality %}
+                    <label class="quality-pill {% if q == 'mp3-128' %}active{% endif %}">
+                        <input type="radio" name="audio_quality" value="mp3-128" style="display:none" {% if q == 'mp3-128' %}checked{% endif %}>
+                        128 kbps
+                    </label>
+                    <label class="quality-pill {% if q == 'mp3-192' %}active{% endif %}">
+                        <input type="radio" name="audio_quality" value="mp3-192" style="display:none" {% if q == 'mp3-192' %}checked{% endif %}>
+                        192 kbps
+                    </label>
+                    <label class="quality-pill {% if q not in ['mp3-128','mp3-192','flac'] %}active{% endif %}">
+                        <input type="radio" name="audio_quality" value="mp3-320" style="display:none" {% if q not in ['mp3-128','mp3-192','flac'] %}checked{% endif %}>
+                        320 kbps
+                    </label>
+                    <label class="quality-pill {% if q == 'flac' %}active{% endif %}">
+                        <input type="radio" name="audio_quality" value="flac" style="display:none" {% if q == 'flac' %}checked{% endif %}>
+                        FLAC
+                    </label>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:10px">
+                <button type="button" class="btn btn-ghost btn-lg"
+                        style="flex:0 0 auto;padding-left:20px;padding-right:20px"
+                        onclick="browsePlaylist()">👁 Browse</button>
+                <button type="submit" class="btn btn-green btn-full btn-lg" style="flex:1">🚀 Download</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- ── YOUTUBE VIDEO ── -->
+    <div class="card">
+        <div class="card-title">📼 YouTube Video</div>
+        <form action="/download_video" method="POST">
+            <div style="margin-bottom:14px">
+                <input type="url" name="video_url" placeholder="https://www.youtube.com/watch?v=…">
+            </div>
+            <div style="margin-bottom:18px">
+                <label>Video quality</label>
+                <div class="quality-group">
+                    {% set vq = settings.video_quality %}
+                    {% for res in ['360p','480p','720p','1080p'] %}
+                    <label class="quality-pill {% if vq == res %}active{% endif %}">
+                        <input type="radio" name="video_quality" value="{{ res }}" style="display:none" {% if vq == res %}checked{% endif %}>
+                        {{ res }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-full btn-lg"
+                    style="background:linear-gradient(90deg,#c00,#e00);color:#fff">
+                🎬 Download Video
+            </button>
+        </form>
+    </div>
+
+</div>
+
+<style>
+    .hero {
+        background: radial-gradient(circle at 0% 0%, rgba(29,185,84,.18), transparent 60%),
+                    radial-gradient(circle at 100% 100%, rgba(30,215,96,.12), transparent 55%),
+                    var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        padding: 28px 28px 22px; margin-bottom: 20px;
+    }
+    .hero-title {
+        display: flex; align-items: center; gap: 12px;
+        font-size: 1.35em; font-weight: 700; letter-spacing: -.4px;
+        margin-bottom: 18px;
+    }
+    .hero-emoji { font-size: 1.4em; }
+    .hero-stats {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+    }
+    .stat {
+        background: rgba(0,0,0,.3); border: 1px solid var(--border);
+        border-radius: 14px; padding: 12px 14px; text-align: center;
+    }
+    .stat-num {
+        font-size: 1.45em; font-weight: 800; color: var(--green2);
+        letter-spacing: -.5px; line-height: 1.1;
+    }
+    .stat-label {
+        font-size: .72em; color: var(--muted); text-transform: uppercase;
+        letter-spacing: 1px; margin-top: 4px;
+    }
+    @media (max-width: 500px) {
+        .hero { padding: 22px 18px 18px; }
+        .hero-title { font-size: 1.1em; }
+        .stat-num { font-size: 1.2em; }
+    }
+
+    kbd {
+        background: rgba(255,255,255,.08); border: 1px solid var(--border);
+        border-radius: 5px; padding: 1px 6px; font-family: inherit;
+        font-size: .85em; color: var(--text);
+    }
+
+    .paste-btn {
+        position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+        background: var(--surface); border: 1px solid var(--border);
+        color: var(--muted); width: 34px; height: 34px; border-radius: 8px;
+        cursor: pointer; font-size: 1em; transition: all .15s;
+    }
+    .paste-btn:hover { color: var(--green); border-color: rgba(29,185,84,.4); }
+
+    .search-tabs {
+        display: flex; gap: 6px; margin: 14px 0 12px; overflow-x: auto;
+        padding-bottom: 2px;
+    }
+    .search-tab {
+        background: var(--surface2); border: 1px solid var(--border);
+        color: var(--muted); padding: 6px 14px; border-radius: 999px;
+        font-size: .8em; font-weight: 600; cursor: pointer;
+        white-space: nowrap; transition: all .15s;
+    }
+    .search-tab:hover  { color: var(--text); }
+    .search-tab.active { background: var(--green); color: #000; border-color: var(--green); }
+
+    .search-results {
+        max-height: 460px; overflow-y: auto;
+        scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    }
+    .search-results::-webkit-scrollbar { width: 6px; }
+    .search-results::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .search-empty {
+        text-align: center; color: var(--muted); font-size: .85em;
+        padding: 24px 12px;
+    }
+
+    .result-section-title {
+        font-size: .7em; font-weight: 700; color: var(--muted);
+        text-transform: uppercase; letter-spacing: 1.2px;
+        margin: 14px 4px 8px;
+    }
+    .result-section-title:first-child { margin-top: 4px; }
+
+    .result-item {
+        display: flex; align-items: center; gap: 14px;
+        padding: 10px 12px; border-radius: 12px;
+        border: 1px solid transparent; cursor: pointer;
+        transition: all .15s; margin-bottom: 4px;
+    }
+    .result-item:hover {
+        background: rgba(29,185,84,.08);
+        border-color: rgba(29,185,84,.3);
+    }
+    .result-cover {
+        width: 48px; height: 48px; border-radius: 8px; object-fit: cover;
+        background: #222; flex-shrink: 0;
+    }
+    .result-cover-fallback {
+        width: 48px; height: 48px; border-radius: 8px; background: #222;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.2em; color: var(--muted); flex-shrink: 0;
+    }
+    .result-name {
+        font-weight: 600; font-size: .92em; margin-bottom: 3px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .result-meta {
+        font-size: .76em; color: var(--muted);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .result-info { flex: 1; min-width: 0; }
+    .result-action {
+        background: var(--green); color: #000; border: none;
+        padding: 7px 14px; border-radius: 8px; font-weight: 700;
+        font-size: .8em; cursor: pointer; transition: all .15s;
+        flex-shrink: 0;
+    }
+    .result-action:hover { background: var(--green2); transform: scale(1.05); }
+    .result-kind-badge {
+        display: inline-block; font-size: .65em; font-weight: 700;
+        padding: 2px 8px; border-radius: 999px; margin-right: 6px;
+        background: rgba(255,255,255,.08); color: var(--muted);
+        text-transform: uppercase; letter-spacing: .5px; vertical-align: middle;
+    }
+
+    .mini-spinner {
+        width: 18px; height: 18px; border-radius: 50%;
+        border: 2px solid rgba(255,255,255,.15);
+        border-top-color: var(--green);
+        animation: spin .7s linear infinite;
+    }
+
+    .toast {
+        position: fixed; top: 70px; right: 18px; left: 18px;
+        max-width: 360px; margin-left: auto;
+        background: var(--green); color: #000;
+        padding: 11px 16px; border-radius: 12px;
+        font-size: .88em; font-weight: 700;
+        z-index: 9999; box-shadow: 0 6px 20px rgba(0,0,0,.5);
+        animation: toast-in .25s ease-out;
+    }
+    @keyframes toast-in {
+        from { transform: translateY(-20px); opacity: 0; }
+        to   { transform: translateY(0); opacity: 1; }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // ── Quality pill toggle ──
+    document.querySelectorAll('.quality-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+            const name = pill.querySelector('input').name;
+            document.querySelectorAll(`.quality-pill input[name="${name}"]`).forEach(i => {
+                i.closest('.quality-pill').classList.remove('active');
+            });
+            pill.classList.add('active');
+        });
+    });
+
+    // ── Toast ──
+    function showToast(msg, ms = 2400) {
+        const t = document.createElement('div');
+        t.className = 'toast';
+        t.textContent = msg;
+        document.body.appendChild(t);
+        setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .25s'; }, ms);
+        setTimeout(() => t.remove(), ms + 300);
+    }
+    function escHtml(s) {
+        return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function fmtBytes(n) {
+        if (!n) return '0 B';
+        const u = ['B','KB','MB','GB','TB'];
+        const i = Math.floor(Math.log(n) / Math.log(1024));
+        return (n / Math.pow(1024, i)).toFixed(i ? 1 : 0) + ' ' + u[i];
+    }
+
+    // ── Hero stats ──
+    fetch('/api/stats').then(r => r.json()).then(s => {
+        document.getElementById('stat-songs').textContent = (s.total_songs || 0).toLocaleString();
+        document.getElementById('stat-zips').textContent  = (s.total_downloads || 0).toLocaleString();
+        document.getElementById('stat-size').textContent  = fmtBytes(s.total_size || 0);
+    }).catch(() => {});
+
+    // ── Spotify URL detection ──
+    const SPOTIFY_RE = /https?:\/\/open\.spotify\.com\/(playlist|album|track)\/[A-Za-z0-9]+/;
+    function isSpotifyUrl(s) { return SPOTIFY_RE.test((s || '').trim()); }
+
+    // ── Paste-from-clipboard button ──
+    async function pasteFromClipboard() {
+        try {
+            const text = await navigator.clipboard.readText();
+            if (text) {
+                document.getElementById('playlist_url').value = text.trim();
+                showToast('📋 Pasted!');
+            }
+        } catch {
+            showToast('Allow clipboard access in your browser');
+        }
+    }
+
+    // ── Auto-detect URL on global paste ──
+    document.addEventListener('paste', e => {
+        const active = document.activeElement;
+        const inAnInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+        if (inAnInput) return;
+        const text = (e.clipboardData || window.clipboardData).getData('text');
+        if (isSpotifyUrl(text)) {
+            document.getElementById('playlist_url').value = text.trim();
+            document.getElementById('playlist_url').scrollIntoView({behavior: 'smooth', block: 'center'});
+            showToast('🎯 Spotify link detected & pasted');
+        }
+    });
+
+    // ── Browse button (uses existing /browse endpoint) ──
+    function browsePlaylist() {
+        const url = document.getElementById('playlist_url').value.trim();
+        if (!url) { showToast('Paste a Spotify URL first'); return; }
+        const form = document.createElement('form');
+        form.method = 'POST'; form.action = '/browse';
+        const inp = document.createElement('input');
+        inp.name = 'playlist_url'; inp.value = url;
+        form.appendChild(inp); document.body.appendChild(form); form.submit();
+    }
+
+    // ── SEARCH ──
+    const searchInput = document.getElementById('search-input');
+    const resultsBox  = document.getElementById('search-results');
+    const emptyBox    = document.getElementById('search-empty');
+    const spinner     = document.getElementById('search-spinner');
+    let searchTimer = null, searchAbort = null, currentTab = 'all';
+    let lastResults  = { tracks: [], albums: [], playlists: [] };
+
+    document.querySelectorAll('.search-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.search-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            currentTab = tab.dataset.tab;
+            renderResults(lastResults);
+        });
+    });
+
+    searchInput.addEventListener('input', () => {
+        const q = searchInput.value.trim();
+        clearTimeout(searchTimer);
+        if (searchAbort) searchAbort.abort();
+        if (!q) { resultsBox.innerHTML = ''; emptyBox.style.display = 'block'; spinner.style.display = 'none'; return; }
+        emptyBox.style.display = 'none';
+        spinner.style.display = 'block';
+        searchTimer = setTimeout(() => doSearch(q), 280);
+    });
+
+    async function doSearch(q) {
+        try {
+            searchAbort = new AbortController();
+            const r = await fetch('/api/search?q=' + encodeURIComponent(q),
+                                  { signal: searchAbort.signal });
+            const data = await r.json();
+            lastResults = data;
+            renderResults(data);
+        } catch (e) {
+            if (e.name !== 'AbortError') {
+                resultsBox.innerHTML = '<div class="search-empty">Search failed. Try again.</div>';
+            }
+        } finally {
+            spinner.style.display = 'none';
+        }
+    }
+
+    function renderResults(data) {
+        const sections = [];
+        const showAll = currentTab === 'all';
+        if ((showAll || currentTab === 'tracks')    && data.tracks   ?.length) sections.push(['🎵 Songs',     data.tracks,    'track']);
+        if ((showAll || currentTab === 'albums')    && data.albums   ?.length) sections.push(['💿 Albums',    data.albums,    'album']);
+        if ((showAll || currentTab === 'playlists') && data.playlists?.length) sections.push(['📚 Playlists', data.playlists, 'playlist']);
+
+        if (!sections.length) {
+            resultsBox.innerHTML = '<div class="search-empty">No results — try a different query.</div>';
+            return;
+        }
+
+        let html = '';
+        for (const [title, items, kind] of sections) {
+            html += `<div class="result-section-title">${title}</div>`;
+            for (const it of items.slice(0, currentTab === 'all' ? 4 : 20)) {
+                const cover = it.cover
+                    ? `<img class="result-cover" src="${escHtml(it.cover)}" alt="" loading="lazy">`
+                    : `<div class="result-cover-fallback">${kind === 'track' ? '🎵' : kind === 'album' ? '💿' : '📚'}</div>`;
+                const meta  = kind === 'playlist'
+                    ? `${escHtml(it.artist || 'Spotify')} · ${it.tracks_count || 0} tracks`
+                    : kind === 'album'
+                        ? `${escHtml(it.artist)} · ${it.year || ''}`
+                        : `${escHtml(it.artist)}`;
+                const payload = JSON.stringify({
+                    kind, id: it.id, url: it.url || '',
+                    name: it.name, artist: it.artist || '',
+                    album: it.album || '', cover: it.cover || ''
+                }).replace(/"/g, '&quot;');
+                html += `
+                    <div class="result-item" data-payload="${payload}">
+                        ${cover}
+                        <div class="result-info">
+                            <div class="result-name">${escHtml(it.name)}</div>
+                            <div class="result-meta">
+                                <span class="result-kind-badge">${kind}</span>${meta}
+                            </div>
+                        </div>
+                        <button class="result-action" type="button">
+                            ${kind === 'track' ? '⬇ Get' : '⬇ Download'}
+                        </button>
+                    </div>`;
+            }
+        }
+        resultsBox.innerHTML = html;
+        resultsBox.querySelectorAll('.result-item').forEach(el => {
+            el.addEventListener('click', () => downloadFromResult(JSON.parse(el.dataset.payload)));
+        });
+    }
+
+    function downloadFromResult(item) {
+        const form = document.getElementById('dl-form');
+        // Clear stale hidden inputs from previous clicks
+        form.querySelectorAll('input[type=hidden][data-tmp]').forEach(n => n.remove());
+        const addHidden = (name, value) => {
+            const i = document.createElement('input');
+            i.type = 'hidden'; i.name = name; i.value = value;
+            i.dataset.tmp = '1';
+            form.appendChild(i);
+        };
+        if (item.kind === 'track') {
+            // Send "artist|title|cover|album"
+            addHidden('itunes_track', [item.artist, item.name, item.cover, item.album].join('|'));
+        } else if (item.kind === 'album') {
+            addHidden('itunes_album_id', item.id);
+        } else if (item.kind === 'playlist') {
+            document.getElementById('playlist_url').value = item.url;
+        }
+        showToast('⏳ Starting: ' + item.name);
+        form.submit();
+    }
+
+    // ── Keyboard shortcuts ──
+    document.addEventListener('keydown', e => {
+        // "/" focuses search (unless typing in another field)
+        if (e.key === '/' && document.activeElement !== searchInput
+                          && !['INPUT','TEXTAREA'].includes(document.activeElement?.tagName)) {
+            e.preventDefault();
+            searchInput.focus();
+        }
+        // Cmd/Ctrl+K focuses search
+        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+            e.preventDefault();
+            searchInput.focus();
+            searchInput.select();
+        }
+        // Escape clears search
+        if (e.key === 'Escape' && document.activeElement === searchInput) {
+            searchInput.value = '';
+            searchInput.dispatchEvent(new Event('input'));
+        }
+    });
+</script>
+{% endblock %}

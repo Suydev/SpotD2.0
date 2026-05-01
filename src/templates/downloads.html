@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Downloads — SpotDL{% endblock %}
+
+{% block content %}
+<div class="page">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+        <div>
+            <h1 style="font-size:1.3em;font-weight:800">Download History</h1>
+            <p style="font-size:.82em;color:var(--muted)">{{ stats.total }} total · {{ stats.active }} active · {{ stats.completed }} completed</p>
+        </div>
+        <div style="display:flex;gap:8px">
+            <a href="/" class="btn btn-green">+ New Download</a>
+            {% if stats.total %}
+            <a href="/clear_downloads" class="btn btn-red btn-sm"
+               onclick="return confirm('Clear all finished downloads?')">🗑 Clear Finished</a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if not downloads %}
+    <div class="card" style="text-align:center;padding:50px 20px">
+        <div style="font-size:3em;margin-bottom:12px">📂</div>
+        <div style="font-weight:700;margin-bottom:8px">No downloads yet</div>
+        <p style="color:var(--muted);font-size:.88em;margin-bottom:20px">
+            Start downloading a playlist or YouTube video from the home page.
+        </p>
+        <a href="/" class="btn btn-green">Go to Home</a>
+    </div>
+    {% else %}
+
+    {% for dl in downloads %}
+    <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:0">
+                <div style="font-weight:700;font-size:1em;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                    {% if dl.id.startswith('video_') %}🎬{% else %}🎵{% endif %}
+                    {{ dl.playlist_name or 'Download' }}
+                </div>
+                <div style="font-size:.78em;color:var(--muted)">
+                    {% if dl.quality %}{{ dl.quality }}{% endif %}
+                    {% if dl.chunk_label %} · {{ dl.chunk_label }}{% endif %}
+                    {% if dl.started_at %} · {{ dl.started_at[:16].replace('T',' ') }}{% endif %}
+                </div>
+            </div>
+            <div>
+                {% if dl.status == 'completed' and dl.file_deleted %}
+                    <span class="badge badge-ok">Saved ✓</span>
+                {% elif dl.status == 'completed' %}
+                    <span class="badge badge-ok">Ready</span>
+                {% elif dl.status == 'error' %}
+                    <span class="badge badge-error">Failed</span>
+                {% elif dl.status in ['downloading','creating_zip'] %}
+                    <span class="badge badge-info">{{ dl.progress or 0 }}%</span>
+                {% else %}
+                    <span class="badge badge-info">{{ dl.status }}</span>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if dl.status in ['downloading','creating_zip','fetching_playlist','initializing'] %}
+        <div class="progress-track" style="margin-top:12px">
+            <div class="progress-fill" style="width:{{ dl.progress or 0 }}%"></div>
+        </div>
+        {% endif %}
+
+        {% if dl.error %}
+        <div style="font-size:.78em;color:#ff6b61;margin-top:8px;padding:8px 10px;background:rgba(255,69,58,.07);border-radius:8px">
+            {{ dl.error[:200] }}
+        </div>
+        {% endif %}
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+            {% if dl.status == 'completed' and not dl.file_deleted %}
+                <a href="/download/{{ dl.id }}" class="btn btn-green btn-sm">📥 Download</a>
+                {% if dl.has_next %}
+                <a href="/next_chunk/{{ dl.id }}" class="btn btn-ghost btn-sm">⏭ Next Batch</a>
+                {% endif %}
+            {% elif dl.status == 'completed' and dl.file_deleted %}
+                {% if dl.has_next %}
+                <a href="/next_chunk/{{ dl.id }}" class="btn btn-ghost btn-sm">⏭ Next Batch</a>
+                {% endif %}
+                <span style="font-size:.78em;color:var(--muted);align-self:center">File removed from server</span>
+            {% elif dl.status not in ['error'] %}
+                <a href="/status/{{ dl.id }}" class="btn btn-ghost btn-sm">👁 View Progress</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+
+    {% endif %}
+</div>
+{% endblock %}

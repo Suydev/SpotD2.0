@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>Console — SpotDL</title>
+<style>
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#000;--surface:rgba(255,255,255,.04);--surface2:rgba(255,255,255,.02);
+    --border:rgba(255,255,255,.09);--text:rgba(255,255,255,.92);
+    --muted:rgba(255,255,255,.45);--mint:#66E0CF;--mint2:#CDFFD0;
+    --red:#ff453a;--yellow:#ffd60a;
+  }
+  body{
+    font-family:'JetBrains Mono','SF Mono',Menlo,monospace;
+    background:var(--bg);color:var(--text);min-height:100vh;font-size:13px;
+  }
+  header{
+    position:sticky;top:0;z-index:50;
+    background:rgba(0,0,0,.85);backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--border);
+    padding:12px 22px;display:flex;align-items:center;gap:14px;
+  }
+  .logo{
+    width:30px;height:30px;border-radius:8px;
+    background:linear-gradient(135deg,var(--mint2),var(--mint));
+    color:#000;font-weight:800;display:flex;align-items:center;justify-content:center;
+  }
+  .title{font-size:.95rem;font-weight:700;letter-spacing:.4px}
+  .pill{
+    font-size:.7rem;padding:3px 9px;border-radius:999px;
+    background:rgba(102,224,207,.12);color:var(--mint);
+    border:1px solid rgba(102,224,207,.3);
+    text-transform:uppercase;letter-spacing:.6px;font-weight:700;
+  }
+  .grow{flex:1}
+  .nav-actions a{
+    color:var(--muted);text-decoration:none;font-size:.78rem;
+    padding:6px 11px;border-radius:7px;margin-left:4px;
+  }
+  .nav-actions a:hover{color:var(--text);background:var(--surface)}
+  main{max-width:1100px;margin:0 auto;padding:24px 22px 80px}
+
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+  .stat{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:12px;padding:16px;
+  }
+  .stat .lbl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.7px}
+  .stat .val{font-size:1.5rem;font-weight:700;margin-top:6px;color:var(--mint)}
+  .stat .sub{font-size:.72rem;color:var(--muted);margin-top:2px}
+
+  @media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
+
+  .panel{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:14px;margin-bottom:18px;overflow:hidden;
+  }
+  .panel-h{
+    padding:13px 18px;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:10px;
+    background:rgba(255,255,255,.02);
+  }
+  .panel-h .h-title{font-weight:700;font-size:.85rem;letter-spacing:.3px}
+  .panel-h .h-meta{margin-left:auto;font-size:.72rem;color:var(--muted)}
+  .panel-body{padding:16px 18px}
+
+  .actions{display:flex;flex-wrap:wrap;gap:8px}
+  .btn{
+    font-family:inherit;font-size:.78rem;font-weight:600;
+    padding:8px 14px;border-radius:8px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text);cursor:pointer;
+    transition:all .15s;
+  }
+  .btn:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2)}
+  .btn-mint{background:var(--mint);color:#000;border-color:var(--mint)}
+  .btn-mint:hover{filter:brightness(1.1);background:var(--mint)}
+  .btn-warn{background:rgba(255,214,10,.1);color:var(--yellow);border-color:rgba(255,214,10,.3)}
+  .btn-warn:hover{background:rgba(255,214,10,.2)}
+  .btn-red{background:rgba(255,69,58,.1);color:var(--red);border-color:rgba(255,69,58,.3)}
+  .btn-red:hover{background:rgba(255,69,58,.2)}
+
+  table{width:100%;border-collapse:collapse;font-size:.78rem}
+  th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)}
+  th{color:var(--muted);font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.5px}
+  td.mono{font-family:inherit;color:var(--mint)}
+  tr:last-child td{border-bottom:none}
+  .empty{padding:30px;text-align:center;color:var(--muted);font-size:.82rem}
+
+  .logs{
+    background:#000;color:rgba(255,255,255,.85);font-size:.74rem;
+    padding:14px 16px;max-height:340px;overflow:auto;border-radius:0 0 14px 14px;
+    line-height:1.6;
+  }
+  .log-line{display:flex;gap:10px;padding:1px 0}
+  .log-ts{color:var(--muted);flex-shrink:0;width:170px}
+  .log-lvl{flex-shrink:0;width:46px;font-weight:700}
+  .log-INFO{color:var(--mint)}
+  .log-WARN{color:var(--yellow)}
+  .log-ERROR{color:var(--red)}
+  .log-msg{word-break:break-word;color:rgba(255,255,255,.9)}
+
+  .kvs{display:grid;grid-template-columns:120px 1fr;gap:6px 14px;font-size:.78rem}
+  .kvs .k{color:var(--muted)}
+  .kvs .v{color:var(--text);word-break:break-word}
+
+  .tag{
+    display:inline-block;padding:2px 8px;border-radius:999px;font-size:.68rem;
+    font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+  }
+  .tag-active{background:rgba(102,224,207,.15);color:var(--mint)}
+  .tag-done  {background:rgba(255,255,255,.08);color:rgba(255,255,255,.6)}
+  .tag-err   {background:rgba(255,69,58,.12);color:var(--red)}
+
+  .pulse{
+    width:8px;height:8px;border-radius:50%;background:var(--mint);
+    box-shadow:0 0 0 0 rgba(102,224,207,.6);
+    animation:pulse 1.6s infinite;
+  }
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(102,224,207,.6)}
+    70%{box-shadow:0 0 0 10px rgba(102,224,207,0)}
+    100%{box-shadow:0 0 0 0 rgba(102,224,207,0)}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">⌘</div>
+  <div class="title">SpotDL · console</div>
+  <div class="pill"><span class="pulse" style="display:inline-block;margin-right:5px;vertical-align:middle"></span>OPERATOR</div>
+  <div class="grow"></div>
+  <div class="nav-actions">
+    <a href="/">← App</a>
+    <a href="/admin/logout">Lock</a>
+  </div>
+</header>
+
+<main>
+  <!-- Top stats -->
+  <div class="grid" id="stats">
+    <div class="stat"><div class="lbl">Active</div><div class="val" id="s-active">—</div><div class="sub">downloads in flight</div></div>
+    <div class="stat"><div class="lbl">Stored</div><div class="val" id="s-stored">—</div><div class="sub" id="s-files">— files</div></div>
+    <div class="stat"><div class="lbl">Disk free</div><div class="val" id="s-disk">—</div><div class="sub" id="s-disk-pct">—</div></div>
+    <div class="stat"><div class="lbl">Uptime</div><div class="val" id="s-up">—</div><div class="sub" id="s-pid">pid —</div></div>
+  </div>
+
+  <!-- Quick actions -->
+  <div class="panel">
+    <div class="panel-h">
+      <div class="h-title">⚡ Operator actions</div>
+      <div class="h-meta">irreversible</div>
+    </div>
+    <div class="panel-body">
+      <div class="actions">
+        <button class="btn btn-mint"  onclick="act('cleanup')">Run cleanup now</button>
+        <button class="btn btn-warn"  onclick="act('cancel-all', 'Cancel all active downloads?')">Cancel all active</button>
+        <button class="btn btn-red"   onclick="act('clear-history','Wipe ALL download history? (cannot be undone)')">Wipe history</button>
+        <button class="btn"           onclick="loadAll()">Refresh</button>
+        <a class="btn" href="/settings">Open settings →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live queue -->
+  <div class="panel">
+    <div class="panel-h">
+      <div class="h-title">▶ Live queue</div>
+      <div class="h-meta" id="q-meta">—</div>
+    </div>
+    <div class="panel-body" style="padding:0">
+      <table id="q-table">
+        <thead><tr><th>ID</th><th>Status</th><th>Name</th><th>Progress</th><th>Songs</th></tr></thead>
+        <tbody><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="panel">
+    <div class="panel-h">
+      <div class="h-title">⏱ Recent history</div>
+      <div class="h-meta" id="h-meta">—</div>
+    </div>
+    <div class="panel-body" style="padding:0">
+      <table id="h-table">
+        <thead><tr><th>ID</th><th>Status</th><th>Name</th><th>Size</th><th>Songs</th></tr></thead>
+        <tbody><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- System / Settings -->
+  <div class="panel">
+    <div class="panel-h">
+      <div class="h-title">⚙ System</div>
+    </div>
+    <div class="panel-body">
+      <div class="kvs" id="sys-kvs"></div>
+    </div>
+  </div>
+
+  <!-- Logs -->
+  <div class="panel">
+    <div class="panel-h">
+      <div class="h-title">📜 Live logs</div>
+      <div class="h-meta" id="l-meta">—</div>
+    </div>
+    <div class="logs" id="logs">loading…</div>
+  </div>
+</main>
+
+<script>
+function fmtBytes(n){
+  if(!n) return '0 B';
+  const u=['B','KB','MB','GB','TB'];let i=0;
+  while(n>=1024 && i<u.length-1){n/=1024;i++}
+  return n.toFixed(n<10?2:1)+' '+u[i];
+}
+function fmtUptime(s){
+  if(s<60) return s+'s';
+  if(s<3600) return Math.floor(s/60)+'m '+(s%60)+'s';
+  if(s<86400) return Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'m';
+  return Math.floor(s/86400)+'d '+Math.floor((s%86400)/3600)+'h';
+}
+function tagFor(status){
+  if(['initializing','fetching_playlist','downloading','creating_zip'].includes(status))
+    return '<span class="tag tag-active">'+status+'</span>';
+  if(status==='error'||status==='cancelled')
+    return '<span class="tag tag-err">'+status+'</span>';
+  return '<span class="tag tag-done">'+status+'</span>';
+}
+async function fetchJSON(u, opts){
+  const r = await fetch(u, opts||{});
+  if(r.status===302||r.status===401||r.status===404){
+    location.href = '/admin/login?next=/admin';
+    return null;
+  }
+  return r.json();
+}
+async function loadState(){
+  const d = await fetchJSON('/admin/api/state');
+  if(!d) return;
+  document.getElementById('s-active').textContent = d.totals.active;
+  document.getElementById('s-stored').textContent = fmtBytes(d.storage.total_bytes);
+  document.getElementById('s-files').textContent = d.storage.file_count + ' files';
+  document.getElementById('s-disk').textContent = fmtBytes(d.disk.free);
+  if(d.disk.total){
+    const pct = ((d.disk.used/d.disk.total)*100).toFixed(0);
+    document.getElementById('s-disk-pct').textContent = pct+'% used of '+fmtBytes(d.disk.total);
+  }
+  document.getElementById('s-up').textContent = fmtUptime(d.system.uptime_sec);
+  document.getElementById('s-pid').textContent = 'pid '+d.system.pid;
+
+  // Queue
+  const qb = document.querySelector('#q-table tbody');
+  qb.innerHTML = '';
+  if(!d.queue.length){
+    qb.innerHTML = '<tr><td colspan="5" class="empty">No active downloads.</td></tr>';
+  } else {
+    d.queue.forEach(s=>{
+      const pct = s.total ? Math.round(((s.downloaded||0)/s.total)*100) : 0;
+      qb.insertAdjacentHTML('beforeend',
+        '<tr><td class="mono">'+(s.id||'').slice(0,10)+'</td>'+
+        '<td>'+tagFor(s.status)+'</td>'+
+        '<td>'+(s.playlist_name||'—')+'</td>'+
+        '<td>'+pct+'%</td>'+
+        '<td>'+(s.downloaded||0)+'/'+(s.total||0)+'</td></tr>');
+    });
+  }
+  document.getElementById('q-meta').textContent = d.queue.length+' running';
+
+  // History
+  const hb = document.querySelector('#h-table tbody');
+  hb.innerHTML = '';
+  if(!d.history.length){
+    hb.innerHTML = '<tr><td colspan="5" class="empty">No completed downloads yet.</td></tr>';
+  } else {
+    d.history.slice().reverse().forEach(s=>{
+      hb.insertAdjacentHTML('beforeend',
+        '<tr><td class="mono">'+(s.id||'').slice(0,10)+'</td>'+
+        '<td>'+tagFor(s.status)+'</td>'+
+        '<td>'+(s.playlist_name||'—')+'</td>'+
+        '<td>'+fmtBytes(s.file_size||0)+'</td>'+
+        '<td>'+(s.downloaded||0)+'</td></tr>');
+    });
+  }
+  document.getElementById('h-meta').textContent = d.history.length+' entries';
+
+  // System kvs
+  const sys = d.system, set = d.settings;
+  const kvs = [
+    ['Python', sys.python],
+    ['Platform', sys.platform],
+    ['Auth gate', sys.auth_on ? 'enabled' : 'open'],
+    ['CWD', sys.cwd],
+    ['Server time', sys.time],
+    ['Retention', set.retention_hours + ' h'],
+    ['Workers', set.parallel_workers],
+    ['Max songs', set.max_songs],
+    ['Audio quality', set.audio_quality],
+  ];
+  document.getElementById('sys-kvs').innerHTML = kvs
+    .map(([k,v]) => '<div class="k">'+k+'</div><div class="v">'+v+'</div>').join('');
+}
+async function loadLogs(){
+  const d = await fetchJSON('/admin/api/logs?n=200');
+  if(!d) return;
+  const el = document.getElementById('logs');
+  if(!d.lines.length){ el.textContent = '(no log lines yet)'; return; }
+  const wasAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 10;
+  el.innerHTML = d.lines.map(l =>
+    '<div class="log-line">'+
+      '<span class="log-ts">'+l.ts+'</span>'+
+      '<span class="log-lvl log-'+l.level+'">'+l.level+'</span>'+
+      '<span class="log-msg">'+(l.msg||'').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))+'</span>'+
+    '</div>').join('');
+  document.getElementById('l-meta').textContent = d.total+' total · showing '+d.lines.length;
+  if(wasAtBottom) el.scrollTop = el.scrollHeight;
+}
+async function act(action, confirmMsg){
+  if(confirmMsg && !confirm(confirmMsg)) return;
+  const r = await fetch('/admin/api/'+action, {method:'POST'});
+  if(!r.ok){ alert('Action failed.'); return; }
+  const j = await r.json();
+  let msg;
+  if('removed'   in j) msg = 'Removed '+j.removed+' items.';
+  else if('cancelled' in j) msg = 'Cancelled '+j.cancelled+' downloads.';
+  else msg = 'Done.';
+  flashToast(msg);
+  loadAll();
+}
+function flashToast(msg){
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);'+
+    'background:#66E0CF;color:#000;padding:10px 18px;border-radius:999px;'+
+    'font-size:.82rem;font-weight:700;z-index:9999;'+
+    'box-shadow:0 6px 18px rgba(102,224,207,.4);';
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),2200);
+}
+function loadAll(){ loadState(); loadLogs(); }
+loadAll();
+setInterval(loadAll, 4000);
+</script>
+</body>
+</html>

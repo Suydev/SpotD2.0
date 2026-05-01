@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Settings — SpotDL{% endblock %}
+
+{% block content %}
+<div class="page" style="max-width:640px">
+    <h1 style="font-size:1.3em;font-weight:800;margin-bottom:4px">⚙️ Settings</h1>
+    <p style="font-size:.82em;color:var(--muted);margin-bottom:24px">Configure download preferences</p>
+
+    <!-- ── HOW IT WORKS ── -->
+    <div class="card" style="border-color:rgba(29,185,84,.25);background:rgba(29,185,84,.05)">
+        <div class="card-title">✅ Free & No Subscription Required</div>
+        <p style="font-size:.88em;color:rgba(255,255,255,.75);line-height:1.7;margin-bottom:14px">
+            SpotDL uses Spotify's <strong>public web player API</strong> — the same one your browser
+            uses when you open Spotify.com. <strong>No API key, no login, no Premium subscription needed.</strong>
+            Works for any public playlist on Spotify.
+        </p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" onclick="testConn()">🔗 Test Connection</button>
+        </div>
+        <div id="test-result" style="margin-top:10px;font-size:.85em"></div>
+    </div>
+
+    <!-- ── DOWNLOAD PREFERENCES ── -->
+    <div class="card">
+        <div class="card-title">🎛 Download Preferences</div>
+        <form method="POST">
+            <div class="two-col" style="margin-bottom:14px">
+                <div>
+                    <label>Max songs per playlist</label>
+                    <input type="number" name="max_songs" value="{{ settings.max_songs }}" min="1" max="300">
+                </div>
+                <div>
+                    <label>Songs per batch (ZIP)</label>
+                    <input type="number" name="chunk_size" value="{{ settings.chunk_size }}" min="1" max="50">
+                </div>
+            </div>
+
+            <div style="margin-bottom:14px">
+                <label>Default audio quality</label>
+                <div class="quality-group">
+                    {% set q = settings.audio_quality %}
+                    {% for val, lbl in [('mp3-128','128 kbps'),('mp3-192','192 kbps'),('mp3-320','320 kbps'),('flac','FLAC')] %}
+                    <label class="quality-pill {% if q == val %}active{% endif %}">
+                        <input type="radio" name="audio_quality" value="{{ val }}" style="display:none" {% if q == val %}checked{% endif %}>
+                        {{ lbl }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div style="margin-bottom:20px">
+                <label>Default video quality</label>
+                <div class="quality-group">
+                    {% set vq = settings.video_quality %}
+                    {% for res in ['360p','480p','720p','1080p'] %}
+                    <label class="quality-pill {% if vq == res %}active{% endif %}">
+                        <input type="radio" name="video_quality" value="{{ res }}" style="display:none" {% if vq == res %}checked{% endif %}>
+                        {{ res }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-green">💾 Save Preferences</button>
+        </form>
+    </div>
+
+    <!-- ── HOW DOWNLOADS WORK ── -->
+    <div class="card">
+        <div class="card-title">ℹ️ How Downloads Work</div>
+        <ul style="font-size:.85em;color:rgba(255,255,255,.65);line-height:2;padding-left:18px">
+            <li>Spotify is used <strong>only to read track names</strong> (title + artist) from public playlists</li>
+            <li>Each track is then found and downloaded from <strong>YouTube</strong> via yt-dlp — completely free</li>
+            <li>Audio is converted to your chosen quality using FFmpeg</li>
+            <li>All tracks in a batch are bundled into a <strong>ZIP file</strong> for easy download</li>
+            <li>Files are <strong>deleted from the server</strong> 60 seconds after you download them</li>
+            <li>No accounts, no logins, no subscriptions — ever</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.querySelectorAll('.quality-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+            const name = pill.querySelector('input').name;
+            document.querySelectorAll(`.quality-pill input[name="${name}"]`).forEach(i => {
+                i.closest('.quality-pill').classList.remove('active');
+            });
+            pill.classList.add('active');
+        });
+    });
+
+    function testConn() {
+        const res = document.getElementById('test-result');
+        res.innerHTML = '<span style="color:var(--muted)">Testing…</span>';
+        fetch('/test_connection')
+            .then(r => r.json())
+            .then(d => {
+                res.innerHTML = d.status === 'success'
+                    ? `<span style="color:var(--green2)">✅ ${d.message}</span>`
+                    : `<span style="color:var(--red)">❌ ${d.message}</span>`;
+            })
+            .catch(() => { res.innerHTML = '<span style="color:var(--red)">❌ Request failed</span>'; });
+    }
+</script>
+{% endblock %}

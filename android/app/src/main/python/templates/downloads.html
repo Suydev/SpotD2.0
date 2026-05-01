@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}Your Downloads — SpotDL{% endblock %}
+
+{% block content %}
+<div class="page">
+
+    <!-- Stats banner -->
+    <div class="stats-banner">
+        <div class="stat-block">
+            <div class="stat-num">{{ stats.completed }}</div>
+            <div class="stat-label">Completed</div>
+        </div>
+        <div class="stat-block">
+            <div class="stat-num" id="stat-songs">—</div>
+            <div class="stat-label">Songs</div>
+        </div>
+        <div class="stat-block">
+            <div class="stat-num" id="stat-size">—</div>
+            <div class="stat-label">Total size</div>
+        </div>
+        <div class="stat-block {% if stats.active %}live{% endif %}">
+            <div class="stat-num">{{ stats.active }}</div>
+            <div class="stat-label">{% if stats.active %}● Live{% else %}Active{% endif %}</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <div class="card-title" style="margin:0;flex:1">📂 Your Downloads</div>
+            {% if downloads %}
+            <input type="text" id="filter-input" placeholder="Filter…"
+                   style="max-width:170px;padding:6px 12px;font-size:.85em">
+            <a href="/clear_downloads" class="btn btn-red btn-sm"
+               onclick="return confirm('Clear all completed downloads?')">Clear all</a>
+            {% endif %}
+        </div>
+
+        {% if not downloads %}
+            <div style="text-align:center;padding:40px 16px;color:var(--muted)">
+                <div style="font-size:2em;margin-bottom:10px">📭</div>
+                <div style="font-size:.95em;margin-bottom:4px">No downloads yet</div>
+                <div style="font-size:.8em">Search or paste a Spotify link on the home page to get started.</div>
+                <a href="/" class="btn btn-green btn-lg" style="margin-top:18px">🏠 Go home</a>
+            </div>
+        {% else %}
+            <div id="dl-list">
+            {% for d in downloads %}
+            <div class="dl-row {{ d.status }}" data-name="{{ (d.playlist_name or '')|lower }}">
+                <div class="dl-icon">
+                    {% if d.status == 'completed' %}✅
+                    {% elif d.status == 'error' %}⚠️
+                    {% elif d.id and d.id.startswith('video') %}📼
+                    {% else %}🎵{% endif %}
+                </div>
+                <div class="dl-info">
+                    <div class="dl-name">{{ d.playlist_name or 'Untitled' }}</div>
+                    <div class="dl-meta">
+                        {% if d.status == 'completed' %}
+                            {{ d.downloaded or 0 }} tracks
+                            {% if d.file_size %} · {{ (d.file_size / 1048576) | round(1) }} MB{% endif %}
+                            {% if d.quality %} · {{ d.quality | upper }}{% endif %}
+                        {% elif d.status == 'error' %}
+                            <span style="color:var(--red)">Error: {{ d.error or 'unknown' }}</span>
+                        {% else %}
+                            {{ d.status | replace('_',' ') }} · {{ d.progress or 0 }}%
+                        {% endif %}
+                        {% if d.completed_at %}
+                            · <span class="rel-time" data-ts="{{ d.completed_at }}">{{ d.completed_at[:16] }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="dl-actions">
+                    {% if d.status == 'completed' and d.file_exists %}
+                        <a href="/download/{{ d.id }}" class="btn btn-green btn-sm">⬇</a>
+                        <button class="btn btn-ghost btn-sm" onclick="showQR('{{ d.id }}')" title="Send to phone">📱</button>
+                    {% elif d.status in ['fetching_playlist','downloading','creating_zip','initializing'] %}
+                        <a href="/status/{{ d.id }}" class="btn btn-green btn-sm">View</a>
+                    {% elif not d.file_exists and d.status == 'completed' %}
+                        <span class="badge badge-info">Removed</span>
+                    {% endif %}
+                    <a href="/delete_download/{{ d.id }}" class="btn btn-ghost btn-sm" title="Remove"
+                       onclick="return confirm('Remove this entry?')">🗑</a>
+                </div>
+            </div>
+            {% endfor %}
+            </div>
+            <div id="filter-empty" style="display:none;text-align:center;padding:24px;color:var(--muted);font-size:.85em">
+                No matches.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- QR modal -->
+<div id="qr-modal" class="qr-modal" onclick="hideQR(event)">
+    <div class="qr-card" onclick="event.stopPropagation()">
+        <div style="font-weight:700;margin-bottom:14px">📱 Scan with your phone</div>
+        <img id="qr-img" alt="QR code" style="width:240px;height:240px;border-radius:12px;background:#fff;padding:8px">
+        <div style="font-size:.78em;color:var(--muted);margin-top:14px;word-break:break-all" id="qr-url"></div>
+        <button class="btn btn-ghost btn-full" style="margin-top:14px" onclick="hideQR()">Close</button>
+    </div>
+</div>
+
+<style>
+    .stats-banner {
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+        margin-bottom: 18px;
+    }
+    .stat-block {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 14px; padding: 14px 12px; text-align: center;
+    }
+    .stat-block.live { background: rgba(29,185,84,.08); border-color: rgba(29,185,84,.4); }
+    .stat-block .stat-num {
+        font-size: 1.3em; font-weight: 800; color: var(--green2); line-height: 1;
+    }
+    .stat-block.live .stat-num { animation: pulse 1.4s ease-in-out infinite; }
+    .stat-block .stat-label {
+        font-size: .68em; color: var(--muted); text-transform: uppercase;
+        letter-spacing: 1px; margin-top: 5px;
+    }
+    @media (max-width: 540px) {
+        .stats-banner { grid-template-columns: repeat(2, 1fr); }
+        .stat-block .stat-num { font-size: 1.1em; }
+    }
+    @keyframes pulse {
+        0%,100% { opacity: 1; }
+        50%     { opacity: .55; }
+    }
+
+    .dl-row {
+        display: flex; align-items: center; gap: 12px;
+        padding: 12px 14px; border-radius: 12px;
+        background: var(--surface2); border: 1px solid var(--border);
+        margin-bottom: 8px;
+    }
+    .dl-row.completed { border-color: rgba(29,185,84,.2); }
+    .dl-row.error     { border-color: rgba(255,69,58,.2); }
+    .dl-icon { font-size: 1.4em; flex-shrink: 0; width: 36px; text-align: center; }
+    .dl-info { flex: 1; min-width: 0; }
+    .dl-name {
+        font-weight: 600; font-size: .92em; margin-bottom: 3px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .dl-meta {
+        font-size: .77em; color: var(--muted);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .dl-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .dl-actions .btn { padding: 6px 10px; }
+
+    /* QR modal */
+    .qr-modal {
+        position: fixed; inset: 0; background: rgba(0,0,0,.75);
+        display: none; align-items: center; justify-content: center;
+        z-index: 10000; padding: 20px; backdrop-filter: blur(8px);
+    }
+    .qr-modal.open { display: flex; }
+    .qr-card {
+        background: #1a1a1a; border: 1px solid var(--border);
+        border-radius: 18px; padding: 24px; text-align: center;
+        max-width: 320px; width: 100%;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function fmtBytes(n){ if(!n)return'0 B'; const u=['B','KB','MB','GB','TB']; const i=Math.floor(Math.log(n)/Math.log(1024)); return (n/Math.pow(1024,i)).toFixed(i?1:0)+' '+u[i]; }
+
+    // Pull live stats
+    fetch('/api/stats').then(r => r.json()).then(s => {
+        document.getElementById('stat-songs').textContent = (s.total_songs || 0).toLocaleString();
+        document.getElementById('stat-size').textContent  = fmtBytes(s.total_size || 0);
+    }).catch(() => {});
+
+    // Filter
+    const filterInput = document.getElementById('filter-input');
+    const empty       = document.getElementById('filter-empty');
+    if (filterInput) filterInput.addEventListener('input', () => {
+        const q = filterInput.value.trim().toLowerCase();
+        let visible = 0;
+        document.querySelectorAll('.dl-row').forEach(row => {
+            const m = !q || row.dataset.name.includes(q);
+            row.style.display = m ? '' : 'none';
+            if (m) visible++;
+        });
+        empty.style.display = visible ? 'none' : 'block';
+    });
+
+    // Relative time
+    document.querySelectorAll('.rel-time').forEach(el => {
+        const ts = new Date(el.dataset.ts);
+        const diff = (Date.now() - ts.getTime()) / 1000;
+        let s;
+        if      (diff < 60)         s = 'just now';
+        else if (diff < 3600)       s = Math.floor(diff/60) + 'm ago';
+        else if (diff < 86400)      s = Math.floor(diff/3600) + 'h ago';
+        else if (diff < 86400 * 30) s = Math.floor(diff/86400) + 'd ago';
+        else                        s = ts.toLocaleDateString();
+        el.textContent = s;
+    });
+
+    // QR
+    function showQR(id) {
+        document.getElementById('qr-img').src = '/qr/' + id + '?t=' + Date.now();
+        document.getElementById('qr-url').textContent = location.origin + '/download/' + id;
+        document.getElementById('qr-modal').classList.add('open');
+    }
+    function hideQR(e) {
+        if (e && e.target.closest('.qr-card')) return;
+        document.getElementById('qr-modal').classList.remove('open');
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') hideQR(); });
+</script>
+{% endblock %}

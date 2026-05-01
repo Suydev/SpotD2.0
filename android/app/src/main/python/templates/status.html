@@ -1,0 +1,371 @@
+{% extends "base.html" %}
+{% block title %}Downloading… — SpotDL{% endblock %}
+
+{% block content %}
+<div class="page">
+    <div class="card status-card" id="status-card">
+        <div class="status-header">
+            <div class="status-cover" id="status-cover">🎵</div>
+            <div style="flex:1;min-width:0">
+                <div class="card-title" id="status-title" style="margin-bottom:6px">Starting…</div>
+                <div class="status-sub" id="status-sub">Connecting…</div>
+            </div>
+            <div class="status-badge" id="status-badge">working</div>
+        </div>
+
+        <div class="progress-track">
+            <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+        </div>
+        <div class="progress-meta">
+            <span id="progress-pct">0%</span>
+            <span id="progress-detail"></span>
+        </div>
+
+        <div class="now-playing" id="now-playing"></div>
+
+        <!-- per-track grid -->
+        <div id="tracks-grid" class="tracks-grid"></div>
+
+        <!-- Action buttons (revealed on completion) -->
+        <div id="actions" style="display:none;margin-top:22px">
+            <a href="#" id="dl-btn" class="btn btn-green btn-full btn-lg" style="margin-bottom:10px">
+                ⬇ Download ZIP
+                <span id="dl-size" style="opacity:.7;font-weight:500;margin-left:6px"></span>
+            </a>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+                <button class="btn btn-ghost btn-full" style="flex:1;min-width:140px"
+                        onclick="showQR()">📱 Send to phone (QR)</button>
+                <a href="/" class="btn btn-ghost btn-full" style="flex:1;min-width:140px">🏠 Home</a>
+                <a href="/downloads" class="btn btn-ghost btn-full" style="flex:1;min-width:140px">📂 History</a>
+            </div>
+            <div id="next-chunk-wrap" style="display:none;margin-top:14px">
+                <a href="#" id="next-chunk" class="btn btn-full"
+                   style="background:linear-gradient(90deg,#1DB954,#1ed760);color:#000">
+                    ▶ Continue: next batch
+                </a>
+            </div>
+        </div>
+
+        <div id="error-box" class="error-box" style="display:none"></div>
+    </div>
+</div>
+
+<!-- QR modal -->
+<div id="qr-modal" class="qr-modal" onclick="hideQR(event)">
+    <div class="qr-card" onclick="event.stopPropagation()">
+        <div style="font-weight:700;margin-bottom:14px;font-size:1em">📱 Scan to download on phone</div>
+        <img id="qr-img" alt="QR code" style="width:240px;height:240px;border-radius:12px;background:#fff;padding:8px">
+        <div style="font-size:.78em;color:var(--muted);margin-top:14px;word-break:break-all" id="qr-url"></div>
+        <button class="btn btn-ghost btn-full" style="margin-top:14px" onclick="hideQR()">Close</button>
+    </div>
+</div>
+
+<canvas id="confetti" style="position:fixed;inset:0;pointer-events:none;z-index:9998;display:none"></canvas>
+
+<style>
+    .status-card { padding-top: 24px; }
+    .status-header {
+        display: flex; align-items: center; gap: 14px; margin-bottom: 18px;
+    }
+    .status-cover {
+        width: 64px; height: 64px; border-radius: 12px;
+        background: rgba(29,185,84,.12); display: flex; align-items: center;
+        justify-content: center; font-size: 1.6em; flex-shrink: 0;
+        overflow: hidden;
+    }
+    .status-cover img { width: 100%; height: 100%; object-fit: cover; }
+    .status-sub { font-size: .85em; color: var(--muted); }
+    .status-badge {
+        font-size: .68em; font-weight: 800; letter-spacing: 1px;
+        text-transform: uppercase; padding: 4px 10px; border-radius: 999px;
+        background: rgba(255,214,10,.12); color: var(--yellow);
+        border: 1px solid rgba(255,214,10,.3);
+    }
+    .status-badge.done { background: rgba(29,185,84,.18); color: var(--green2);
+                          border-color: rgba(29,185,84,.4); }
+    .status-badge.err  { background: rgba(255,69,58,.15); color: var(--red);
+                          border-color: rgba(255,69,58,.3); }
+
+    .progress-meta {
+        display: flex; justify-content: space-between;
+        font-size: .8em; color: var(--muted); margin: -4px 0 18px;
+    }
+
+    .now-playing {
+        padding: 10px 14px; border-radius: 10px; background: rgba(0,0,0,.35);
+        border: 1px solid var(--border); font-size: .85em;
+        min-height: 38px; display: flex; align-items: center; gap: 10px;
+        margin-bottom: 18px;
+    }
+    .now-playing.empty { display: none; }
+
+    .tracks-grid {
+        display: grid; grid-template-columns: 1fr; gap: 6px;
+        max-height: 380px; overflow-y: auto;
+        scrollbar-width: thin;
+    }
+    .tracks-grid::-webkit-scrollbar { width: 6px; }
+    .tracks-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .track-row {
+        display: flex; align-items: center; gap: 10px;
+        padding: 8px 10px; border-radius: 8px; font-size: .85em;
+        background: var(--surface2); border: 1px solid var(--border);
+        transition: background .2s, border .2s;
+    }
+    .track-row.downloading { background: rgba(29,185,84,.06); border-color: rgba(29,185,84,.3); }
+    .track-row.done       { background: rgba(29,185,84,.1); border-color: rgba(29,185,84,.4); }
+    .track-row.failed     { background: rgba(255,69,58,.06); border-color: rgba(255,69,58,.25); opacity: .7; }
+    .track-thumb {
+        width: 32px; height: 32px; border-radius: 6px; object-fit: cover;
+        background: #222; flex-shrink: 0;
+    }
+    .track-thumb-fallback {
+        width: 32px; height: 32px; border-radius: 6px; background: rgba(255,255,255,.05);
+        display: flex; align-items: center; justify-content: center;
+        font-size: .8em; color: var(--muted); flex-shrink: 0;
+    }
+    .track-info { flex: 1; min-width: 0; }
+    .track-name {
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        font-weight: 500;
+    }
+    .track-artist {
+        font-size: .82em; color: var(--muted);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .track-status {
+        font-size: 1.1em; flex-shrink: 0; width: 22px; text-align: center;
+    }
+    .track-spinner {
+        width: 14px; height: 14px; border-radius: 50%;
+        border: 2px solid rgba(255,255,255,.15);
+        border-top-color: var(--green); animation: spin .7s linear infinite;
+        display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-box {
+        padding: 14px 16px; border-radius: 10px;
+        background: rgba(255,69,58,.1); color: #ff6b61;
+        border: 1px solid rgba(255,69,58,.3); font-size: .88em;
+        margin-top: 18px;
+    }
+
+    /* QR modal */
+    .qr-modal {
+        position: fixed; inset: 0; background: rgba(0,0,0,.75);
+        display: none; align-items: center; justify-content: center;
+        z-index: 10000; padding: 20px; backdrop-filter: blur(8px);
+    }
+    .qr-modal.open { display: flex; }
+    .qr-card {
+        background: #1a1a1a; border: 1px solid var(--border);
+        border-radius: 18px; padding: 24px; text-align: center;
+        max-width: 320px; width: 100%;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const DL_ID = "{{ download_id }}";
+    let pollMs = 1000, idleCount = 0, finished = false, notifyShown = false;
+
+    function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function fmtBytes(n){ if(!n)return''; const u=['B','KB','MB','GB']; const i=Math.floor(Math.log(n)/Math.log(1024)); return (n/Math.pow(1024,i)).toFixed(i?1:0)+' '+u[i]; }
+
+    // Ask for notification permission on first user interaction
+    function maybeAskNotify() {
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission().catch(() => {});
+        }
+    }
+    document.addEventListener('click', maybeAskNotify, { once: true });
+
+    function ding() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const o = ctx.createOscillator(), g = ctx.createGain();
+            o.connect(g); g.connect(ctx.destination);
+            o.type = 'sine'; o.frequency.value = 880;
+            g.gain.value = 0.18;
+            o.start(); o.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.12);
+            g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+            o.stop(ctx.currentTime + 0.5);
+        } catch {}
+    }
+
+    function poll() {
+        fetch('/api/status/' + DL_ID).then(r => r.json()).then(render).catch(() => {})
+            .finally(() => { if (!finished) setTimeout(poll, pollMs); });
+    }
+
+    function render(s) {
+        if (s.status === 'not_found') {
+            document.getElementById('error-box').style.display = 'block';
+            document.getElementById('error-box').textContent = 'Download not found.';
+            finished = true; return;
+        }
+
+        const title = document.getElementById('status-title');
+        const sub   = document.getElementById('status-sub');
+        const badge = document.getElementById('status-badge');
+        const fill  = document.getElementById('progress-fill');
+        const pct   = document.getElementById('progress-pct');
+        const detail= document.getElementById('progress-detail');
+        const np    = document.getElementById('now-playing');
+
+        title.textContent = s.playlist_name || 'Downloading…';
+        sub.textContent   = s.chunk_label || (s.quality ? s.quality.toUpperCase() : '');
+
+        const p = s.progress || 0;
+        fill.style.width = p + '%';
+        pct.textContent  = p + '%';
+        detail.textContent = (s.downloaded || 0) + ' / ' + (s.total || '?') + ' tracks';
+
+        // Cover art = first track's cover
+        const tp = s.tracks_progress || [];
+        const firstCover = tp.find(t => t.cover)?.cover;
+        const coverEl = document.getElementById('status-cover');
+        if (firstCover && !coverEl.dataset.set) {
+            coverEl.innerHTML = `<img src="${escHtml(firstCover)}" alt="">`;
+            coverEl.dataset.set = '1';
+        }
+
+        if (s.current_song && s.status !== 'completed') {
+            np.classList.remove('empty');
+            np.innerHTML = `<span class="track-spinner"></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(s.current_song)}</span>`;
+        } else if (s.status !== 'completed') {
+            np.classList.add('empty');
+        } else {
+            np.classList.add('empty');
+        }
+
+        // Per-track grid
+        renderTracks(tp);
+
+        // Status badge & states
+        if (s.status === 'completed') {
+            badge.textContent = 'completed'; badge.className = 'status-badge done';
+            document.getElementById('actions').style.display = 'block';
+            const dl = document.getElementById('dl-btn');
+            dl.href = '/download/' + DL_ID;
+            document.getElementById('dl-size').textContent =
+                s.file_size ? '· ' + fmtBytes(s.file_size) : '';
+            if (s.has_next) {
+                document.getElementById('next-chunk-wrap').style.display = 'block';
+                document.getElementById('next-chunk').href = '/next_chunk/' + DL_ID;
+            }
+            if (!notifyShown) {
+                notifyShown = true; finished = true;
+                celebrate(s);
+            }
+        } else if (s.status === 'error') {
+            badge.textContent = 'error'; badge.className = 'status-badge err';
+            const eb = document.getElementById('error-box');
+            eb.style.display = 'block';
+            eb.textContent = s.error || 'Something went wrong.';
+            finished = true;
+        } else {
+            badge.textContent = (s.status || 'working').replace('_', ' ');
+        }
+    }
+
+    function renderTracks(tp) {
+        if (!tp || !tp.length) return;
+        const grid = document.getElementById('tracks-grid');
+        // First render builds the rows
+        if (grid.childElementCount !== tp.length) {
+            grid.innerHTML = tp.map((t, i) => `
+                <div class="track-row" id="trk-${i}">
+                    ${t.cover
+                        ? `<img class="track-thumb" src="${escHtml(t.cover)}" alt="" loading="lazy">`
+                        : `<div class="track-thumb-fallback">${i+1}</div>`}
+                    <div class="track-info">
+                        <div class="track-name">${escHtml(t.name)}</div>
+                        <div class="track-artist">${escHtml(t.artist)}</div>
+                    </div>
+                    <div class="track-status" id="trk-st-${i}">⏳</div>
+                </div>`).join('');
+        }
+        // Update statuses
+        tp.forEach((t, i) => {
+            const row = document.getElementById('trk-' + i);
+            const st  = document.getElementById('trk-st-' + i);
+            if (!row || !st) return;
+            row.classList.remove('downloading','done','failed');
+            if (t.status === 'downloading') {
+                row.classList.add('downloading');
+                st.innerHTML = '<span class="track-spinner"></span>';
+            } else if (t.status === 'done') {
+                row.classList.add('done'); st.textContent = '✅';
+            } else if (t.status === 'failed') {
+                row.classList.add('failed'); st.textContent = '⚠️';
+            } else {
+                st.textContent = '⏳';
+            }
+        });
+    }
+
+    function celebrate(s) {
+        ding();
+        confetti();
+        // Browser notification (only if backgrounded)
+        if ('Notification' in window && Notification.permission === 'granted'
+                && document.hidden) {
+            try {
+                const n = new Notification('SpotDL · Download ready', {
+                    body: (s.playlist_name || 'Your songs') + ' — ' + (s.downloaded || 0) + ' tracks',
+                    icon: '/static/icon.svg', tag: DL_ID,
+                });
+                n.onclick = () => { window.focus(); n.close(); };
+            } catch {}
+        }
+    }
+
+    // ── Confetti (lightweight, no library) ──
+    function confetti() {
+        const c = document.getElementById('confetti');
+        c.style.display = 'block';
+        c.width = innerWidth; c.height = innerHeight;
+        const ctx = c.getContext('2d');
+        const colors = ['#1DB954','#1ed760','#ffd60a','#ff453a','#5e9eff','#ffffff'];
+        const pieces = Array.from({length: 140}, () => ({
+            x: Math.random() * innerWidth, y: -20 - Math.random() * 200,
+            vx: (Math.random() - .5) * 5, vy: 3 + Math.random() * 4,
+            w: 6 + Math.random() * 6, h: 4 + Math.random() * 4,
+            r: Math.random() * 2 * Math.PI, vr: (Math.random() - .5) * 0.3,
+            color: colors[Math.floor(Math.random() * colors.length)],
+        }));
+        const start = Date.now();
+        (function tick() {
+            const elapsed = Date.now() - start;
+            ctx.clearRect(0, 0, c.width, c.height);
+            for (const p of pieces) {
+                p.x += p.vx; p.y += p.vy; p.vy += 0.07; p.r += p.vr;
+                ctx.save();
+                ctx.translate(p.x, p.y); ctx.rotate(p.r);
+                ctx.fillStyle = p.color;
+                ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                ctx.restore();
+            }
+            if (elapsed < 3500) requestAnimationFrame(tick);
+            else c.style.display = 'none';
+        })();
+    }
+
+    // ── QR ──
+    function showQR() {
+        document.getElementById('qr-img').src = '/qr/' + DL_ID + '?t=' + Date.now();
+        document.getElementById('qr-url').textContent = location.origin + '/download/' + DL_ID;
+        document.getElementById('qr-modal').classList.add('open');
+    }
+    function hideQR(e) {
+        if (e && e.target.closest('.qr-card')) return;
+        document.getElementById('qr-modal').classList.remove('open');
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') hideQR(); });
+
+    poll();
+</script>
+{% endblock %}

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SpotDL</string>
+    <!--
+        Set this to your deployed Flask URL.
+        e.g. https://spotdl.suydev.repl.co  or  https://spotd.suydev.dev
+        Must start with https:// for production builds (cleartext is disabled).
+    -->
+    <string name="server_url">https://298337b0-6712-452f-8b42-f0cd62a1484c-00-21iy6dhx7g9ci.pike.replit.dev</string>
+</resources>
